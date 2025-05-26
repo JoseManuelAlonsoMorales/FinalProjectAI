@@ -12,7 +12,7 @@ from sklearn.neighbors import KNeighborsClassifier
 
 st.set_page_config(
     page_title = 'Proyecto Final IA',
-    page_icon = 'gota.jpg',
+    page_icon = 'assets/gota.jpg',
     layout = 'wide',
     initial_sidebar_state = 'expanded',
     menu_items = {
