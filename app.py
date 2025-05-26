@@ -2,6 +2,7 @@ import streamlit as st
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 import pandas as pd
 import random
 import toml
@@ -35,7 +36,9 @@ class Application:
         self.getConfig()
 
     def getData(self):
-        self.data = pd.read_csv("data/consumo_agua_historico_2019.csv")
+        base_path = os.path.dirname(__file__)
+        csv_path = os.path.join(base_path, "data", "consumo_agua_historico_2019.csv")
+        self.data = pd.read_csv(csv_path)
 
     def getConfig(self):
         ruta_toml = ".streamlit/config.toml"
