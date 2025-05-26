@@ -34,7 +34,9 @@ class Application:
         self.getData()
 
     def getData(self):
-        self.data = pd.read_csv('data/consumo_agua_historico_2019.csv')
+        url = "https://raw.githubusercontent.com/JoseManuelAlonsoMorales/FinalProjectAI/main/data/consumo_agua_historico_2019.csv"
+        self.data = pd.read_csv(url)
+
 
 app = Application()
 df = app.data
