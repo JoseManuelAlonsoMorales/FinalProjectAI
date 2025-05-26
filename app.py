@@ -35,7 +35,7 @@ class Application:
         self.getConfig()
 
     def getData(self):
-        self.data = pd.read_csv("data/reportes_agua_hist.csv")
+        self.data = pd.read_csv("data/consumo_agua_historico_2019.csv")
 
     def getConfig(self):
         ruta_toml = ".streamlit/config.toml"
