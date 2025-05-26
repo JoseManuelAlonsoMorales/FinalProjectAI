@@ -83,8 +83,7 @@ opcion = st.sidebar.selectbox(
 )
 
 if opcion == "Ver Dataframe":
-    dataSetAgua = pd.read_csv("consumo_agua_historico_2019.csv")
-    dataSetAgua.describe()
+    df.describe()
 
 if opcion == "Regresión Lineal":
     st.subheader("Modelo de Regresión Lineal")
