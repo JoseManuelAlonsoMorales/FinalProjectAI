@@ -1,1 +1,45 @@
+import streamlit as st
+import matplotlib.patches as mpatches
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import random
+import toml
+from matplotlib.colors import ListedColormap
+from sklearn.linear_model import LinearRegression
+from sklearn.neighbors import KNeighborsClassifier
 
+st.set_page_config(
+    page_title = 'Proyecto Final IA',
+    page_icon = 'gota.jpg',
+    layout = 'wide',
+    initial_sidebar_state = 'expanded',
+    menu_items = {
+        'Get Help': None,
+        'Report a Bug': None,
+        'About': """
+            **Integrantes del equipo:**\n
+            * José Manuel Alonso Morales\n
+            * Santiago Bañuelos Hernández\n
+            * Emiliano Luna Casablanca\n
+            [Repositorio de Girhub](wikipedia.com)
+        """
+    }
+)
+
+class Application:
+    def __init__(self):
+        self.data = None
+        self.config = None
+        self.getData()
+        self.getConfig()
+
+    def getData(self):
+        self.data = pd.read_csv("data/reportes_agua_hist.csv")
+
+    def getConfig(self):
+        ruta_toml = ".streamlit/config.toml"
+        with open(ruta_toml, "r") as f:
+            self.config = toml.load(f)
+
+st.title('Proyecto Final IA')
