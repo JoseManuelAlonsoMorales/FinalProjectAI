@@ -34,9 +34,7 @@ class Application:
         self.getData()
 
     def getData(self):
-        base_path = os.path.dirname(__file__)
-        csv_path = os.path.join(base_path, "data", "consumo_agua_historico_2019.csv")
-        self.data = pd.read_csv(csv_path)
+        self.data = pd.read_csv('data/consumo_agua_historico_2019.csv')
 
 app = Application()
 
