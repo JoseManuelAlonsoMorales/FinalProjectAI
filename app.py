@@ -31,19 +31,12 @@ st.set_page_config(
 class Application:
     def __init__(self):
         self.data = None
-        self.config = None
         self.getData()
-        self.getConfig()
 
     def getData(self):
         base_path = os.path.dirname(__file__)
         csv_path = os.path.join(base_path, "data", "consumo_agua_historico_2019.csv")
         self.data = pd.read_csv(csv_path)
-
-    def getConfig(self):
-        ruta_toml = ".streamlit/config.toml"
-        with open(ruta_toml, "r") as f:
-            self.config = toml.load(f)
 
 app = Application()
 
