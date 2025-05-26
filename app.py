@@ -12,7 +12,7 @@ from sklearn.neighbors import KNeighborsClassifier
 
 st.set_page_config(
     page_title = 'Proyecto Final IA',
-    page_icon = 'assets/gota.jpg',
+    page_icon = '💧',
     layout = 'wide',
     initial_sidebar_state = 'expanded',
     menu_items = {
@@ -79,8 +79,12 @@ for i in range(len(listaAlcaldias)):
 st.sidebar.title("Opciones de análisis")
 opcion = st.sidebar.selectbox(
     "Selecciona el modelo a aplicar:",
-    ("Regresión Lineal", "Clasificación")
+    ("Ver Dataframe", "Regresión Lineal", "Clasificación")
 )
+
+if opcion == "Ver Dataframe":
+    dataSetAgua = pd.read_csv("consumo_agua_historico_2019.csv")
+    dataSetAgua.describe()
 
 if opcion == "Regresión Lineal":
     st.subheader("Modelo de Regresión Lineal")
