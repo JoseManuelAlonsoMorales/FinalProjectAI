@@ -42,4 +42,8 @@ class Application:
         with open(ruta_toml, "r") as f:
             self.config = toml.load(f)
 
+app = Application()
+
 st.title('Proyecto Final IA')
+
+st.write('hola mundo')
