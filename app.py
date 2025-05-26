@@ -22,7 +22,7 @@ st.set_page_config(
             * José Manuel Alonso Morales\n
             * Santiago Bañuelos Hernández\n
             * Emiliano Luna Casablanca\n
-            [Repositorio de Girhub](wikipedia.com)
+            [Repositorio de Girhub](https://github.com/JoseManuelAlonsoMorales/FinalProjectAI)
         """
     }
 )
