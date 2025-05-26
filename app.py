@@ -37,13 +37,14 @@ class Application:
         self.data = pd.read_csv('data/consumo_agua_historico_2019.csv')
 
 app = Application()
+df = app.data
 
 st.title('Proyecto Final IA')
 
-listaConsumoTotal = app["consumo_total"].tolist() # Vaiable Independiente, Lista del consumo total de cada delegacion
+listaConsumoTotal = df["consumo_total"].tolist() # Vaiable Independiente, Lista del consumo total de cada delegacion
 
-listaColonias = app["colonia"].tolist() #Lista colonias
-listaAlcaldias = app['alcaldia'].tolist() #Lista Alcaldias
+listaColonias = df["colonia"].tolist() #Lista colonias
+listaAlcaldias = df['alcaldia'].tolist() #Lista Alcaldias
 
 cantConsumidaMaxMin = np.array(listaConsumoTotal) #Convertir el consumo total para poder ver el min y max y poder crear los datos de agua transportada
 
