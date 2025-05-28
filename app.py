@@ -1,13 +1,8 @@
 import streamlit as st
-import matplotlib.patches as mpatches
-import matplotlib.pyplot as plt
 import numpy as np
-import os
 import pandas as pd
 import plotly.express as px
 import random
-import toml
-from matplotlib.colors import ListedColormap
 from sklearn.linear_model import LinearRegression
 from sklearn.neighbors import KNeighborsClassifier
 
@@ -51,28 +46,28 @@ class Application:
         return self.__consumo_total
     
     def getListaColonias(self):
-        return self.data['colonia'].tolist()
+        return self.__df['colonia'].tolist()
     
     def getListaAlcaldias(self):
-        return self.data['alcaldia'].tolist()
+        return self.__df['alcaldia'].tolist()
     
     def getListaConsumoTotal(self):
-        return self.data['consumo_total'].tolist()
+        return self.__df['consumo_total'].tolist()
     
     def limpiarDataFrame(self):
         # Limpiamos valores nulos y cadenas vacías en alcaldía y colonia
-        self.data = self.__df.dropna(subset=['alcaldia', 'colonia'])
+        self.__df = self.__df.dropna(subset=['alcaldia', 'colonia'])
 
         # Convertimos alcaldía y colonia a tipo string y eliminamos los espacios en blanco
-        self.data['alcaldia'] = self.data['alcaldia'].astype(str).str.strip()
-        self.data['colonia'] = self.data['colonia'].astype(str).str.strip()
+        self.__df['alcaldia'] = self.__df['alcaldia'].astype(str).str.strip()
+        self.__df['colonia'] = self.__df['colonia'].astype(str).str.strip()
 
         # Eliminamos filas en donde el valor de la alcaldía sea nan o una cadena vacía
-        self.data = self.data[(self.data['alcaldia'] != '') & (self.data['alcaldia'].notna())]
+        self.__df = self.__df[(self.__df['alcaldia'] != '') & (self.__df['alcaldia'].notna())]
     
     # Creamos una lista para almacenar la cantidad de agua transportada por colonia
     def generarAguaTransportada(self, seed=2004, max_value=15000):
-        consumo = self.data["consumo_total"]
+        consumo = self.__df["consumo_total"]
         random.seed(seed)
         return [random.randint(int(consumo.min()), max_value) for _ in range(len(consumo))]
 
@@ -80,7 +75,7 @@ class Application:
     def getDiccionarioAlcaldiasColonias(self):
         colonias = self.getListaColonias()
         alcaldias = self.getListaAlcaldias()
-        consumo_total = self.data["consumo_total"].tolist()
+        consumo_total = self.__df["consumo_total"].tolist()
         agua_transportada = self.generarAguaTransportada()
 
         dicc = {}
@@ -129,7 +124,7 @@ if opcion == "Ver Dataframe":
     alcaldia_seleccionada = st.selectbox("Selecciona una alcaldía", alcaldias)
 
     if alcaldia_seleccionada != "-- Todas las alcaldías --":
-        colonias_filtradas = app.data[app.data["alcaldia"] == alcaldia_seleccionada]["colonia"].unique()
+        colonias_filtradas = df[df["alcaldia"] == alcaldia_seleccionada]["colonia"].unique()
         colonias = sorted(colonias_filtradas)
         colonias = ["-- Todas las colonias --"] + colonias
         colonia_seleccionada = st.selectbox("Selecciona una colonia:", colonias)
@@ -137,7 +132,7 @@ if opcion == "Ver Dataframe":
         colonia_seleccionada = "-- Todas las colonias --"
 
     # Aplicar filtros según selección
-    df_filtrado = app.data
+    df_filtrado = df
 
     if alcaldia_seleccionada != "-- Todas las alcaldías --":
         df_filtrado = df_filtrado[df_filtrado["alcaldia"] == alcaldia_seleccionada]
@@ -147,102 +142,148 @@ if opcion == "Ver Dataframe":
 
     st.subheader(f"Datos{' para ' + colonia_seleccionada if colonia_seleccionada != '-- Todas las colonias --' else ''}"
                  f"{' en ' + alcaldia_seleccionada if alcaldia_seleccionada != '-- Todas las alcaldías --' else ''}")
+    
     st.dataframe(df_filtrado)
 
+# Si el usuario selecciona "Regresión Lineal", mostramos el modelo de regresión lineal
 if opcion == "Regresión Lineal":
     st.subheader("Modelo de Regresión Lineal")
 
-    # Filtros
-    alcaldias = ["-- Todas las alcaldías --"] + sorted(diccionario_alcaldias_colonias.keys())
-    alcaldia_seleccionada = st.selectbox("Selecciona una alcaldía:", alcaldias)
+    alcaldias = sorted(list(app.getAlcaldias()))
+    alcaldias = ["-- Todas las alcaldías --"] + alcaldias
+    alcaldia_seleccionada = st.selectbox("Selecciona una alcaldía", alcaldias)
 
-    colonia_seleccionada = "-- Todas las colonias --"
     if alcaldia_seleccionada != "-- Todas las alcaldías --":
-        colonias = ["-- Todas las colonias --"] + sorted(diccionario_alcaldias_colonias[alcaldia_seleccionada].keys())
+        colonias_filtradas = df[df["alcaldia"] == alcaldia_seleccionada]["colonia"].unique()
+        colonias = sorted(colonias_filtradas)
+        colonias = ["-- Todas las colonias --"] + colonias
         colonia_seleccionada = st.selectbox("Selecciona una colonia:", colonias)
+    else:
+        colonia_seleccionada = "-- Todas las colonias --"
 
     # Recolectar datos según filtros
-    datosTransporte = []
-    datosConsumo = []
+    datos_transporte = []
+    datos_consumo = []
 
     if alcaldia_seleccionada == "-- Todas las alcaldías --":
         # Agregamos todos los datos de todas las alcaldías y colonias
         for alcaldia in diccionario_alcaldias_colonias:
             for colonia in diccionario_alcaldias_colonias[alcaldia]:
-                datosTransporte.extend(diccionario_alcaldias_colonias[alcaldia][colonia][0])
-                datosConsumo.extend(diccionario_alcaldias_colonias[alcaldia][colonia][1])
-        titulo = "Regresión lineal: todas las alcaldías y colonias"
+                datos_transporte.extend(diccionario_alcaldias_colonias[alcaldia][colonia][0])
+                datos_consumo.extend(diccionario_alcaldias_colonias[alcaldia][colonia][1])
         
     elif colonia_seleccionada == "-- Todas las colonias --":
         for colonia in diccionario_alcaldias_colonias[alcaldia_seleccionada]:
-            datosTransporte.extend(diccionario_alcaldias_colonias[alcaldia_seleccionada][colonia][0])
-            datosConsumo.extend(diccionario_alcaldias_colonias[alcaldia_seleccionada][colonia][1])
-        titulo = f"Regresión lineal: {alcaldia_seleccionada} (todas sus colonias)"
+            datos_transporte.extend(diccionario_alcaldias_colonias[alcaldia_seleccionada][colonia][0])
+            datos_consumo.extend(diccionario_alcaldias_colonias[alcaldia_seleccionada][colonia][1])
         
     else:
-        datosTransporte = diccionario_alcaldias_colonias[alcaldia_seleccionada][colonia_seleccionada][0]
-        datosConsumo = diccionario_alcaldias_colonias[alcaldia_seleccionada][colonia_seleccionada][1]
-        titulo = f"Regresión lineal: {colonia_seleccionada}, {alcaldia_seleccionada}"
+        datos_transporte = diccionario_alcaldias_colonias[alcaldia_seleccionada][colonia_seleccionada][0]
+        datos_consumo = diccionario_alcaldias_colonias[alcaldia_seleccionada][colonia_seleccionada][1]
+
+    st.subheader(f"Datos{' para ' + colonia_seleccionada if colonia_seleccionada != '-- Todas las colonias --' else ''}"
+                 f"{' en ' + alcaldia_seleccionada if alcaldia_seleccionada != '-- Todas las alcaldías --' else ''}")
 
     # Validar datos
-    if len(datosTransporte) > 1 and len(datosTransporte) == len(datosConsumo):
-        X = np.array(datosTransporte).reshape(-1, 1)
-        Y = np.array(datosConsumo)
+    if len(datos_transporte) > 1 and len(datos_transporte) == len(datos_consumo):
+        X = np.array(datos_transporte).reshape(-1, 1)
+        Y = np.array(datos_consumo)
 
         modelo = LinearRegression()
         modelo.fit(X, Y)
         y_pred = modelo.predict(X)
 
         df_plot = pd.DataFrame({
-            "Agua Transportada": datosTransporte,
-            "Consumo de Agua": datosConsumo,
+            "Agua Transportada": datos_transporte,
+            "Consumo de Agua": datos_consumo,
             "Predicción de Consumo": y_pred
         })
 
         fig = px.scatter(df_plot, x="Agua Transportada", y="Consumo de Agua", 
-                         color_discrete_sequence=["blue"], title=titulo)
-        fig.add_scatter(x=df_plot["Agua Transportada"], y=df_plot["Predicción de Consumo"], 
-                        mode="lines", name="Línea de Regresión", line=dict(color="red"))
+                         color_discrete_sequence=["blue"])
+        fig.add_scatter(mode="lines", name="Línea de Regresión", line=dict(color="red"),
+                        x=df_plot["Agua Transportada"], y=df_plot["Predicción de Consumo"])
+        
         st.plotly_chart(fig)
+
     else:
         st.warning("No hay suficientes datos para entrenar el modelo.")
 
+# Si el usuario selecciona "Clasificación", mostramos el modelo de clasificación
 if opcion == "Clasificación":
     st.subheader("Modelo de Clasificación")
 
-    #Clasificacion
-    ArrayDatos = []
-    DatosY = []
-    for i in range(len(diccionario_alcaldias_colonias['BENITO JUAREZ']['MODERNA'][0])):
-        DatosNuevosArray = [diccionario_alcaldias_colonias['BENITO JUAREZ']['MODERNA'][0][i], diccionario_alcaldias_colonias['BENITO JUAREZ']['MODERNA'][1][i]]
-        ArrayDatos.append(DatosNuevosArray)
+    alcaldias = sorted(list(app.getAlcaldias()))
+    alcaldias = ["-- Todas las alcaldías --"] + alcaldias
+    alcaldia_seleccionada = st.selectbox("Selecciona una alcaldía", alcaldias)
 
-        Diferencia = diccionario_alcaldias_colonias['BENITO JUAREZ']['MODERNA'][0][i] - diccionario_alcaldias_colonias['BENITO JUAREZ']['MODERNA'][1][i]
-        Prom = (diccionario_alcaldias_colonias['BENITO JUAREZ']['MODERNA'][0][i] + diccionario_alcaldias_colonias['BENITO JUAREZ']['MODERNA'][1][i])/2
-        if Diferencia <= 0:
-            DatosY.append(0)
-        elif Diferencia >= Prom:
-            DatosY.append(2)
-        elif Diferencia < Prom:
-            DatosY.append(1)
+    if alcaldia_seleccionada != "-- Todas las alcaldías --":
+        colonias_filtradas = df[df["alcaldia"] == alcaldia_seleccionada]["colonia"].unique()
+        colonias = sorted(colonias_filtradas)
+        colonias = ["-- Todas las colonias --"] + colonias
+        colonia_seleccionada = st.selectbox("Selecciona una colonia:", colonias)
+    else:
+        colonia_seleccionada = "-- Todas las colonias --"
 
+    # Construcción de datos de entrada
+    registros = []
 
-    Xclasificacion = np.array(ArrayDatos)
-    YClasificacion = np.array(DatosY)
+    for alcaldia, colonias_dict in diccionario_alcaldias_colonias.items():
+        if alcaldia_seleccionada != "-- Todas las alcaldías --" and alcaldia != alcaldia_seleccionada:
+            continue
 
-    knn = KNeighborsClassifier(n_neighbors=20)
-    knn.fit(Xclasificacion, YClasificacion)
+        for colonia, valores in colonias_dict.items():
+            if colonia_seleccionada != "-- Todas las colonias --" and colonia != colonia_seleccionada:
+                continue
 
-    plt.figure(figsize=(8, 6))
+            transporte_list = valores[0]
+            consumo_list = valores[1]
 
-    # Graficar los datos de entrenamiento
-    plt.scatter(Xclasificacion[YClasificacion == 0][:, 0], Xclasificacion[YClasificacion == 0][:, 1], color='red', label='Peligro', marker='x')
-    plt.scatter(Xclasificacion[YClasificacion == 1][:, 0], Xclasificacion[YClasificacion == 1][:, 1], color='orange', label='Medio', marker='o')
-    plt.scatter(Xclasificacion[YClasificacion == 2][:, 0], Xclasificacion[YClasificacion == 2][:, 1], color='green', label='Perfecto', marker='d')
+            for transporte, consumo in zip(transporte_list, consumo_list):
+                diferencia = transporte - consumo
+                promedio = (transporte + consumo) / 2
 
-    plt.xlabel('Velocidad')
-    plt.ylabel('Manejo')
-    plt.title('Clasificación de Personajes Mario Kart según estadísticas')
-    plt.legend()
-    plt.grid(True)
-    plt.show()
+                if diferencia <= 0:
+                    categoria = "Peligro"
+                elif diferencia >= promedio:
+                    categoria = "Perfecto"
+                else:
+                    categoria = "Medio"
+
+                registros.append({
+                    "Agua Transportada": transporte,
+                    "Consumo de Agua": consumo,
+                    "Categoría": categoria
+                })
+    
+    st.subheader(f"Datos{' para ' + colonia_seleccionada if colonia_seleccionada != '-- Todas las colonias --' else ''}"
+    f"{' en ' + alcaldia_seleccionada if alcaldia_seleccionada != '-- Todas las alcaldías --' else ''}")
+
+    # Verificación
+    if not registros:
+        st.warning("No hay datos disponibles para la selección.")
+    else:
+        df_clasificacion = pd.DataFrame(registros)
+
+        # Entrenamiento del modelo
+        X = df_clasificacion[["Agua Transportada", "Consumo de Agua"]].values
+        y_map = {"Peligro": 0, "Medio": 1, "Perfecto": 2}
+        y = df_clasificacion["Categoría"].map(y_map).values
+
+        knn = KNeighborsClassifier(n_neighbors=20)
+        knn.fit(X, y)
+
+        # Visualización con plotly express
+        fig = px.scatter(
+            df_clasificacion,
+            x="Agua Transportada",
+            y="Consumo de Agua",
+            color="Categoría",
+            symbol="Categoría",
+            labels={
+                "Agua Transportada": "Agua Transportada (litros)",
+                "Consumo de Agua": "Consumo de Agua (litros)"
+            }
+        )
+
+        st.plotly_chart(fig)
