@@ -45,15 +45,6 @@ class Application:
     def getConsumoTotal(self):
         return self.__consumo_total
     
-    def getListaColonias(self):
-        return self.__df['colonia'].tolist()
-    
-    def getListaAlcaldias(self):
-        return self.__df['alcaldia'].tolist()
-    
-    def getListaConsumoTotal(self):
-        return self.__df['consumo_total'].tolist()
-    
     def limpiarDataFrame(self):
         # Limpiamos valores nulos y cadenas vacías en alcaldía y colonia
         self.__df = self.__df.dropna(subset=['alcaldia', 'colonia'])
@@ -73,8 +64,8 @@ class Application:
 
     # Diccionario para almacenar las alcaldías y sus colonias con los datos de transporte y consumo
     def getDiccionarioAlcaldiasColonias(self):
-        colonias = self.getListaColonias()
-        alcaldias = self.getListaAlcaldias()
+        colonias = self.getColonias()
+        alcaldias = self.getAlcaldias()
         consumo_total = self.__df["consumo_total"].tolist()
         agua_transportada = self.generarAguaTransportada()
 
@@ -105,7 +96,7 @@ st.title('Proyecto Final IA')
 # Comenzamos a trabajar con los datos
 app.limpiarDataFrame()  # Limpiamos el DataFrame de valores nulos y cadenas vacías
 
-cant_consumida_max_min = np.array(app.getListaConsumoTotal()) # Convertimos la lista de consumo total a un array de numpy para obtener los valores máximos y mínimos
+cant_consumida_max_min = np.array(app.getConsumoTotal()) # Convertimos la lista de consumo total a un array de numpy para obtener los valores máximos y mínimos
 diccionario_alcaldias_colonias = app.getDiccionarioAlcaldiasColonias() # Obtenemos el diccionario de alcaldías y colonias con los datos de transporte y consumo
 
 # Sidebar con las opciones de análisis
