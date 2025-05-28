@@ -45,28 +45,37 @@ class Application:
     def getConsumoTotal(self):
         return self.__consumo_total
     
+    def getListaColonias(self):
+        return self.data['colonia'].tolist()
+    
+    def getListaAlcaldias(self):
+        return self.data['alcaldia'].tolist()
+    
+    def getListaConsumoTotal(self):
+        return self.data['consumo_total'].tolist()
+    
     def limpiarDataFrame(self):
         # Limpiamos valores nulos y cadenas vacías en alcaldía y colonia
-        self.__df = self.__df.dropna(subset=['alcaldia', 'colonia'])
+        self.data = self.__df.dropna(subset=['alcaldia', 'colonia'])
 
         # Convertimos alcaldía y colonia a tipo string y eliminamos los espacios en blanco
-        self.__df['alcaldia'] = self.__df['alcaldia'].astype(str).str.strip()
-        self.__df['colonia'] = self.__df['colonia'].astype(str).str.strip()
+        self.data['alcaldia'] = self.data['alcaldia'].astype(str).str.strip()
+        self.data['colonia'] = self.data['colonia'].astype(str).str.strip()
 
         # Eliminamos filas en donde el valor de la alcaldía sea nan o una cadena vacía
-        self.__df = self.__df[(self.__df['alcaldia'] != '') & (self.__df['alcaldia'].notna())]
+        self.data = self.data[(self.data['alcaldia'] != '') & (self.data['alcaldia'].notna())]
     
     # Creamos una lista para almacenar la cantidad de agua transportada por colonia
     def generarAguaTransportada(self, seed=2004, max_value=15000):
-        consumo = self.__df["consumo_total"]
+        consumo = self.data["consumo_total"]
         random.seed(seed)
         return [random.randint(int(consumo.min()), max_value) for _ in range(len(consumo))]
 
     # Diccionario para almacenar las alcaldías y sus colonias con los datos de transporte y consumo
     def getDiccionarioAlcaldiasColonias(self):
-        colonias = self.getColonias()
-        alcaldias = self.getAlcaldias()
-        consumo_total = self.__df["consumo_total"].tolist()
+        colonias = self.getListaColonias()
+        alcaldias = self.getListaAlcaldias()
+        consumo_total = self.data["consumo_total"].tolist()
         agua_transportada = self.generarAguaTransportada()
 
         dicc = {}
@@ -96,7 +105,7 @@ st.title('Proyecto Final IA')
 # Comenzamos a trabajar con los datos
 app.limpiarDataFrame()  # Limpiamos el DataFrame de valores nulos y cadenas vacías
 
-cant_consumida_max_min = np.array(app.getConsumoTotal()) # Convertimos la lista de consumo total a un array de numpy para obtener los valores máximos y mínimos
+cant_consumida_max_min = np.array(app.getListaConsumoTotal()) # Convertimos la lista de consumo total a un array de numpy para obtener los valores máximos y mínimos
 diccionario_alcaldias_colonias = app.getDiccionarioAlcaldiasColonias() # Obtenemos el diccionario de alcaldías y colonias con los datos de transporte y consumo
 
 # Sidebar con las opciones de análisis
@@ -115,7 +124,7 @@ if opcion == "Ver Dataframe":
     alcaldia_seleccionada = st.selectbox("Selecciona una alcaldía", alcaldias)
 
     if alcaldia_seleccionada != "-- Todas las alcaldías --":
-        colonias_filtradas = df[df["alcaldia"] == alcaldia_seleccionada]["colonia"].unique()
+        colonias_filtradas = app.data[app.data["alcaldia"] == alcaldia_seleccionada]["colonia"].unique()
         colonias = sorted(colonias_filtradas)
         colonias = ["-- Todas las colonias --"] + colonias
         colonia_seleccionada = st.selectbox("Selecciona una colonia:", colonias)
@@ -123,7 +132,7 @@ if opcion == "Ver Dataframe":
         colonia_seleccionada = "-- Todas las colonias --"
 
     # Aplicar filtros según selección
-    df_filtrado = df
+    df_filtrado = app.data
 
     if alcaldia_seleccionada != "-- Todas las alcaldías --":
         df_filtrado = df_filtrado[df_filtrado["alcaldia"] == alcaldia_seleccionada]
@@ -145,7 +154,7 @@ if opcion == "Regresión Lineal":
     alcaldia_seleccionada = st.selectbox("Selecciona una alcaldía", alcaldias)
 
     if alcaldia_seleccionada != "-- Todas las alcaldías --":
-        colonias_filtradas = df[df["alcaldia"] == alcaldia_seleccionada]["colonia"].unique()
+        colonias_filtradas = app.data[app.data["alcaldia"] == alcaldia_seleccionada]["colonia"].unique()
         colonias = sorted(colonias_filtradas)
         colonias = ["-- Todas las colonias --"] + colonias
         colonia_seleccionada = st.selectbox("Selecciona una colonia:", colonias)
@@ -209,7 +218,7 @@ if opcion == "Clasificación":
     alcaldia_seleccionada = st.selectbox("Selecciona una alcaldía", alcaldias)
 
     if alcaldia_seleccionada != "-- Todas las alcaldías --":
-        colonias_filtradas = df[df["alcaldia"] == alcaldia_seleccionada]["colonia"].unique()
+        colonias_filtradas = app.data[app.data["alcaldia"] == alcaldia_seleccionada]["colonia"].unique()
         colonias = sorted(colonias_filtradas)
         colonias = ["-- Todas las colonias --"] + colonias
         colonia_seleccionada = st.selectbox("Selecciona una colonia:", colonias)
