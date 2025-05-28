@@ -95,6 +95,23 @@ class Application:
 
         return dicc
 
+def filtro_alcaldia_colonia(app):
+    st.sidebar.title("Filtros")
+
+    alcaldias = sorted(list(app.getAlcaldias()))
+    alcaldias = ["-- Todas las alcaldías --"] + alcaldias
+    alcaldia_seleccionada = st.sidebar.selectbox("Selecciona una alcaldía", alcaldias)
+
+    if alcaldia_seleccionada != "-- Todas las alcaldías --":
+        colonias_filtradas = app.data[app.data["alcaldia"] == alcaldia_seleccionada]["colonia"].unique()
+        colonias = sorted(colonias_filtradas)
+        colonias = ["-- Todas las colonias --"] + colonias
+        colonia_seleccionada = st.sidebar.selectbox("Selecciona una colonia:", colonias)
+    else:
+        colonia_seleccionada = "-- Todas las colonias --"
+
+    return alcaldia_seleccionada, colonia_seleccionada
+
 
 # Inicializamos la aplicación y cargamos los datos
 app = Application(r'https://raw.githubusercontent.com/JoseManuelAlonsoMorales/FinalProjectAI/main/data/consumo_agua_historico_2019.csv')  # URL del archivo CSV
@@ -108,29 +125,13 @@ app.limpiarDataFrame()  # Limpiamos el DataFrame de valores nulos y cadenas vac�
 cant_consumida_max_min = np.array(app.getListaConsumoTotal()) # Convertimos la lista de consumo total a un array de numpy para obtener los valores máximos y mínimos
 diccionario_alcaldias_colonias = app.getDiccionarioAlcaldiasColonias() # Obtenemos el diccionario de alcaldías y colonias con los datos de transporte y consumo
 
-# Sidebar con las opciones de análisis
-st.sidebar.title("Opciones de análisis")
-opcion = st.sidebar.selectbox(
-    "Selecciona el modelo a aplicar:",
-    ("Ver Dataframe", "Regresión Lineal", "Clasificación")
-)
+# Opciones de análisis
+tabs = st.tabs(["Ver Dataframe", "Regresión Lineal", "Clasificación"])
+
+alcaldia_seleccionada, colonia_seleccionada = filtro_alcaldia_colonia(app)
 
 # Si el usuario selecciona "Ver Dataframe", mostramos el DataFrame
-if opcion == "Ver Dataframe":
-    st.subheader("Ver Dataframe")
-
-    alcaldias = sorted(list(app.getAlcaldias()))
-    alcaldias = ["-- Todas las alcaldías --"] + alcaldias
-    alcaldia_seleccionada = st.selectbox("Selecciona una alcaldía", alcaldias)
-
-    if alcaldia_seleccionada != "-- Todas las alcaldías --":
-        colonias_filtradas = app.data[app.data["alcaldia"] == alcaldia_seleccionada]["colonia"].unique()
-        colonias = sorted(colonias_filtradas)
-        colonias = ["-- Todas las colonias --"] + colonias
-        colonia_seleccionada = st.selectbox("Selecciona una colonia:", colonias)
-    else:
-        colonia_seleccionada = "-- Todas las colonias --"
-
+with tabs[0]:
     # Aplicar filtros según selección
     df_filtrado = app.data
 
@@ -146,21 +147,7 @@ if opcion == "Ver Dataframe":
     st.dataframe(df_filtrado)
 
 # Si el usuario selecciona "Regresión Lineal", mostramos el modelo de regresión lineal
-if opcion == "Regresión Lineal":
-    st.subheader("Modelo de Regresión Lineal")
-
-    alcaldias = sorted(list(app.getAlcaldias()))
-    alcaldias = ["-- Todas las alcaldías --"] + alcaldias
-    alcaldia_seleccionada = st.selectbox("Selecciona una alcaldía", alcaldias)
-
-    if alcaldia_seleccionada != "-- Todas las alcaldías --":
-        colonias_filtradas = app.data[app.data["alcaldia"] == alcaldia_seleccionada]["colonia"].unique()
-        colonias = sorted(colonias_filtradas)
-        colonias = ["-- Todas las colonias --"] + colonias
-        colonia_seleccionada = st.selectbox("Selecciona una colonia:", colonias)
-    else:
-        colonia_seleccionada = "-- Todas las colonias --"
-
+with tabs[1]:
     # Recolectar datos según filtros
     datos_transporte = []
     datos_consumo = []
@@ -210,21 +197,7 @@ if opcion == "Regresión Lineal":
         st.warning("No hay suficientes datos para entrenar el modelo.")
 
 # Si el usuario selecciona "Clasificación", mostramos el modelo de clasificación
-if opcion == "Clasificación":
-    st.subheader("Modelo de Clasificación")
-
-    alcaldias = sorted(list(app.getAlcaldias()))
-    alcaldias = ["-- Todas las alcaldías --"] + alcaldias
-    alcaldia_seleccionada = st.selectbox("Selecciona una alcaldía", alcaldias)
-
-    if alcaldia_seleccionada != "-- Todas las alcaldías --":
-        colonias_filtradas = app.data[app.data["alcaldia"] == alcaldia_seleccionada]["colonia"].unique()
-        colonias = sorted(colonias_filtradas)
-        colonias = ["-- Todas las colonias --"] + colonias
-        colonia_seleccionada = st.selectbox("Selecciona una colonia:", colonias)
-    else:
-        colonia_seleccionada = "-- Todas las colonias --"
-
+with tabs[2]:
     # Construcción de datos de entrada
     registros = []
 
