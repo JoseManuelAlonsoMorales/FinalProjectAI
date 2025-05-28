@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import pandas as pd
+import plotly.express as px
 import random
 import toml
 from matplotlib.colors import ListedColormap
@@ -147,10 +148,6 @@ if opcion == "Ver Dataframe":
     st.subheader(f"Datos{' para ' + colonia_seleccionada if colonia_seleccionada != '-- Todas las colonias --' else ''}"
                  f"{' en ' + alcaldia_seleccionada if alcaldia_seleccionada != '-- Todas las alcaldías --' else ''}")
     st.dataframe(df_filtrado)
-
-import plotly.express as px
-from sklearn.linear_model import LinearRegression
-import numpy as np
 
 if opcion == "Regresión Lineal":
     st.subheader("Modelo de Regresión Lineal")
