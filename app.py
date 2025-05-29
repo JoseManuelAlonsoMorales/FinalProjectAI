@@ -1,12 +1,11 @@
-import folium
 import numpy as np
 import pandas as pd
 import plotly.express as px
+import pydeck as pdk
 import random
 import streamlit as st
 from sklearn.linear_model import LinearRegression
 from sklearn.neighbors import KNeighborsClassifier
-from streamlit_folium import st_folium
 
 # Configuración de la página
 st.set_page_config(
@@ -338,49 +337,61 @@ with tabs[3]:
 with tabs[4]:
     mostrarSubtitulo(alcaldia_seleccionada, colonia_seleccionada)
 
-    # Filtrar DataFrame según selección
-    df_mapa = app.data
+    # Aplicar filtros al DataFrame según selección
+    df_filtrado = app.data
+
     if alcaldia_seleccionada != "-- Todas las alcaldías --":
-        df_mapa = df_mapa[df_mapa["alcaldia"] == alcaldia_seleccionada]
+        df_filtrado = df_filtrado[df_filtrado["alcaldia"] == alcaldia_seleccionada]
+
     if colonia_seleccionada != "-- Todas las colonias --":
-        df_mapa = df_mapa[df_mapa["colonia"] == colonia_seleccionada]
+        df_filtrado = df_filtrado[df_filtrado["colonia"] == colonia_seleccionada]
 
-    # Verificamos que haya datos geográficos
-    if df_mapa.empty:
-        st.warning("No hay datos geoespaciales disponibles para esta selección.")
+    if df_filtrado.empty:
+        st.warning("No hay datos disponibles para la selección.")
     else:
-        # Coordenadas centrales aproximadas para CDMX
-        lat_cdmx = df_mapa["latitud"].mean()
-        lon_cdmx = df_mapa["longitud"].mean()
+        # Crear capa ScatterplotLayer
+        layer = pdk.Layer(
+            "ScatterplotLayer",
+            data=df_filtrado,
+            get_position='[longitud, latitud]',
+            get_color='[0, 120, 255, 140]',
+            get_radius=50,
+            radius_scale=10,
+            radius_min_pixels=3,
+            radius_max_pixels=30,
+            pickable=True,
+            auto_highlight=True,
+        )
 
-        # Crear el mapa base
-        mapa = folium.Map(location=[lat_cdmx, lon_cdmx], zoom_start=12)
+        # Vista inicial centrada en CDMX (puedes ajustar si quieres centrar en el filtro)
+        view_state = pdk.ViewState(
+            latitude=19.4326,
+            longitude=-99.1332,
+            zoom=10,
+            pitch=0,
+        )
 
-        # Añadir marcadores por colonia
-        for _, row in df_mapa.iterrows():
-            folium.CircleMarker(
-                location=[row["latitud"], row["longitud"]],
-                radius=5,
-                popup=folium.Popup(
-                    f"""<b>Colonia:</b> {row['colonia']}<br>
-                        <b>Alcaldía:</b> {row['alcaldia']}<br>
-                        <b>Consumo Total:</b> {row['consumo_total']} litros<br>
-                        <b>Índice DES:</b> {row.get('indice_des', 'N/A')}""", 
-                    max_width=300
-                ),
-                color='blue',
-                fill=True,
-                fill_color='cyan',
-                fill_opacity=0.7
-            ).add_to(mapa)
+        # Tooltip con información relevante
+        tooltip = {
+            "html": "<b>Colonia:</b> {colonia} <br/> <b>Consumo Total:</b> {consumo_total} <br/> <b>Índice de Desarrollo Social:</b> {indice_des}",
+            "style": {"color": "white"}
+        }
 
-        # Mostrar el mapa en Streamlit
-        st_data = st_folium(mapa, width=900, height=600)
+        # Crear el deck y mostrarlo
+        r = pdk.Deck(
+            layers=[layer],
+            initial_view_state=view_state,
+            tooltip=tooltip
+        )
+
+        st.pydeck_chart(r)
 
         st.markdown("""
-        Este mapa muestra la distribución geográfica del consumo de agua en las colonias de la Ciudad de México.
+            ### Mapa Interactivo de Consumo de Agua en la Ciudad de México
 
-        - Cada marcador representa una colonia con datos disponibles.
-        - Al hacer clic en un punto, se muestra información del consumo total y el índice de desarrollo social.
-        - El mapa facilita la identificación espacial de patrones de consumo y zonas prioritarias para intervención.
+            Este mapa muestra la distribución geográfica del consumo de agua en las colonias de la Ciudad de México, filtrado según tu selección.
+
+            - Cada punto representa una colonia con datos disponibles.
+            - Al pasar el cursor o hacer clic en un punto, se muestra información del consumo total y el índice de desarrollo social.
+            - Permite explorar espacialmente las zonas con distintos patrones de consumo, facilitando la identificación de áreas prioritarias para la gestión hídrica.
         """)
