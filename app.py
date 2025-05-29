@@ -8,7 +8,7 @@ from sklearn.neighbors import KNeighborsClassifier
 
 # Configuración de la página
 st.set_page_config(
-    page_title = 'Proyecto Final IA',
+    page_title = 'Proyecto IA - Consumo de Agua en CDMX',
     page_icon = '💧',
     layout = 'wide',
     initial_sidebar_state = 'expanded',
@@ -95,7 +95,7 @@ class Application:
 
         return dicc
 
-def filtro_alcaldia_colonia(app):
+def filtroAlcaldiaColonia(app):
     st.sidebar.title("Filtros")
 
     alcaldias = sorted(list(app.getAlcaldias()))
@@ -109,15 +109,22 @@ def filtro_alcaldia_colonia(app):
         colonia_seleccionada = st.sidebar.selectbox("Selecciona una colonia:", colonias)
     else:
         colonia_seleccionada = "-- Todas las colonias --"
-
+    
     return alcaldia_seleccionada, colonia_seleccionada
 
+def mostrarSubtitulo(alcaldia_seleccionada, colonia_seleccionada):
+    # Subheader de los filtros aplicados
+    if alcaldia_seleccionada != "-- Todas las alcaldías --":
+        if colonia_seleccionada == "-- Todas las colonias --":
+            st.subheader(f"Datos en {alcaldia_seleccionada}")
+        else:
+            st.subheader(f"Datos en {alcaldia_seleccionada} para la colonia {colonia_seleccionada}")
 
 # Inicializamos la aplicación y cargamos los datos
 app = Application(r'https://raw.githubusercontent.com/JoseManuelAlonsoMorales/FinalProjectAI/main/data/consumo_agua_historico_2019.csv')  # URL del archivo CSV
 df = app.getDataFrame()
 
-st.title('Proyecto Final IA')
+st.title('Análisis del Consumo de Agua en CDMX')
 
 # Comenzamos a trabajar con los datos
 app.limpiarDataFrame()  # Limpiamos el DataFrame de valores nulos y cadenas vacías
@@ -126,12 +133,27 @@ cant_consumida_max_min = np.array(app.getListaConsumoTotal()) # Convertimos la l
 diccionario_alcaldias_colonias = app.getDiccionarioAlcaldiasColonias() # Obtenemos el diccionario de alcaldías y colonias con los datos de transporte y consumo
 
 # Opciones de análisis
-tabs = st.tabs(["Ver Dataframe", "Regresión Lineal", "Clasificación"])
+tabs = st.tabs(["Introducción", "Datos", "Análisis de Regresión", "Clasificación y Segmentación"])
 
-alcaldia_seleccionada, colonia_seleccionada = filtro_alcaldia_colonia(app)
+alcaldia_seleccionada, colonia_seleccionada = filtroAlcaldiaColonia(app)
 
-# Si el usuario selecciona "Ver Dataframe", mostramos el DataFrame
+# Si el usuario selecciona "Introducción", mostramos un resumen de los datos
 with tabs[0]:
+    st.markdown("""
+        ## Análisis del Consumo de Agua en la Ciudad de México
+
+        Este proyecto tiene como objetivo explorar y analizar patrones de consumo de agua en distintas colonias de la Ciudad de México, utilizando datos geoespaciales y temporales. La base de datos principal incluye información detallada sobre el consumo de agua por tipo de usuario (doméstico, no doméstico y mixto), promedios de consumo, así como indicadores socioeconómicos y ubicaciones geográficas.
+
+        A través de visualizaciones interactivas y herramientas de análisis, este proyecto busca identificar zonas con posibles problemáticas de suministro, contrastar niveles de consumo entre diferentes regiones, y ofrecer una base informada para la toma de decisiones en torno a la gestión del recurso hídrico en la ciudad.
+
+        El análisis abarca múltiples periodos, permitiendo observar tendencias a lo largo del tiempo y evaluar el impacto de factores como el índice de desarrollo social o la densidad urbana en el uso del agua.
+        """)
+
+
+# Si el usuario selecciona "Datos", mostramos el DataFrame
+with tabs[1]:
+    mostrarSubtitulo(alcaldia_seleccionada, colonia_seleccionada)
+
     # Aplicar filtros según selección
     df_filtrado = app.data
 
@@ -140,14 +162,39 @@ with tabs[0]:
 
     if colonia_seleccionada != "-- Todas las colonias --":
         df_filtrado = df_filtrado[df_filtrado["colonia"] == colonia_seleccionada]
-
-    st.subheader(f"Datos{' para ' + colonia_seleccionada if colonia_seleccionada != '-- Todas las colonias --' else ''}"
-                 f"{' en ' + alcaldia_seleccionada if alcaldia_seleccionada != '-- Todas las alcaldías --' else ''}")
     
     st.dataframe(df_filtrado)
 
-# Si el usuario selecciona "Regresión Lineal", mostramos el modelo de regresión lineal
-with tabs[1]:
+    st.markdown("""
+        En esta sección puedes explorar el conjunto de datos que contiene información detallada sobre el consumo de agua en distintas colonias y alcaldías de la Ciudad de México.
+
+        El DataFrame incluye las siguientes columnas principales:
+
+        - **fecha_referencia:** Fecha del registro del consumo.
+        - **anio:** Año al que corresponde el dato.
+        - **bimestre:** Periodo bimestral del año.
+        - **consumo_total_mixto:** Consumo total de agua para usuarios mixtos (litros).
+        - **consumo_prom_dom:** Consumo promedio de agua para usuarios domésticos (litros).
+        - **consumo_total_dom:** Consumo total de agua para usuarios domésticos (litros).
+        - **consumo_prom_mixto:** Consumo promedio para usuarios mixtos (litros).
+        - **consumo_total:** Consumo total combinado (litros).
+        - **consumo_prom:** Consumo promedio combinado (litros).
+        - **consumo_prom_no_dom:** Consumo promedio para usuarios no domésticos (litros).
+        - **consumo_total_no_dom:** Consumo total para usuarios no domésticos (litros).
+        - **indice_des:** Índice de desarrollo social asociado a la colonia.
+        - **colonia:** Nombre de la colonia.
+        - **alcaldia:** Nombre de la alcaldía.
+        - **latitud:** Coordenada geográfica de latitud.
+        - **longitud:** Coordenada geográfica de longitud.
+
+        Esta información permite un análisis detallado y localizado del consumo hídrico, facilitando la identificación de patrones y posibles áreas con retos en el suministro de agua.
+        """)
+
+
+# Si el usuario selecciona "Análisis de Regresión", mostramos el modelo de regresión lineal
+with tabs[2]:
+    mostrarSubtitulo(alcaldia_seleccionada, colonia_seleccionada)
+
     # Recolectar datos según filtros
     datos_transporte = []
     datos_consumo = []
@@ -167,9 +214,6 @@ with tabs[1]:
     else:
         datos_transporte = diccionario_alcaldias_colonias[alcaldia_seleccionada][colonia_seleccionada][0]
         datos_consumo = diccionario_alcaldias_colonias[alcaldia_seleccionada][colonia_seleccionada][1]
-
-    st.subheader(f"Datos{' para ' + colonia_seleccionada if colonia_seleccionada != '-- Todas las colonias --' else ''}"
-                 f"{' en ' + alcaldia_seleccionada if alcaldia_seleccionada != '-- Todas las alcaldías --' else ''}")
 
     # Validar datos
     if len(datos_transporte) > 1 and len(datos_transporte) == len(datos_consumo):
@@ -196,8 +240,24 @@ with tabs[1]:
     else:
         st.warning("No hay suficientes datos para entrenar el modelo.")
 
-# Si el usuario selecciona "Clasificación", mostramos el modelo de clasificación
-with tabs[2]:
+    st.markdown("""
+        ### Análisis con Regresión Lineal
+
+        La regresión lineal es un modelo estadístico que busca encontrar la relación entre dos variables cuantitativas. En este caso, analizamos cómo el **agua transportada** influye en el **consumo de agua**.
+
+        - **Los puntos en el gráfico** representan observaciones individuales: cada punto muestra un par de valores de agua transportada y consumo de agua correspondientes a una colonia o alcaldía.
+        - **La línea roja (pendiente)** es la línea de regresión, que indica la tendencia general de los datos. Esta línea minimiza la distancia entre ella y todos los puntos.
+        - **La pendiente de la línea** nos muestra cómo cambia el consumo esperado cuando cambia la cantidad de agua transportada:
+        - Si la pendiente es positiva (hacia arriba), significa que a mayor agua transportada, mayor es el consumo de agua esperado.
+        - Si la pendiente es negativa (hacia abajo), indicaría que un aumento en el agua transportada se asocia con una disminución en el consumo, lo cual sería poco común en este contexto.
+        
+        Este análisis nos ayuda a entender y predecir el comportamiento del consumo en función del suministro de agua, facilitando la toma de decisiones para una mejor gestión del recurso.
+        """)
+
+# Si el usuario selecciona "Clasificación y Segmentación", mostramos el modelo de clasificación
+with tabs[3]:
+    mostrarSubtitulo(alcaldia_seleccionada, colonia_seleccionada)
+    
     # Construcción de datos de entrada
     registros = []
 
@@ -228,9 +288,6 @@ with tabs[2]:
                     "Consumo de Agua": consumo,
                     "Categoría": categoria
                 })
-    
-    st.subheader(f"Datos{' para ' + colonia_seleccionada if colonia_seleccionada != '-- Todas las colonias --' else ''}"
-    f"{' en ' + alcaldia_seleccionada if alcaldia_seleccionada != '-- Todas las alcaldías --' else ''}")
 
     # Verificación
     if not registros:
@@ -260,3 +317,17 @@ with tabs[2]:
         )
 
         st.plotly_chart(fig)
+
+    st.markdown("""
+        ### Análisis con Modelo de Clasificación
+
+        En esta sección utilizamos un modelo de clasificación basado en el algoritmo **K-Nearest Neighbors (KNN)**, que clasifica las observaciones en categorías según sus características.
+
+        - El modelo toma como entrada dos variables: **agua transportada** y **consumo de agua**.
+        - Clasificamos cada punto en tres categorías:
+        - **Perfecto**: cuando el agua transportada es significativamente mayor al consumo, indicando un suministro adecuado o exceso.
+        - **Medio**: cuando el agua transportada es similar al consumo, mostrando un balance adecuado pero con poca holgura.
+        - **Peligro**: cuando el agua transportada es menor o igual al consumo, lo que puede reflejar un riesgo de insuficiencia o desabasto.
+
+        El algoritmo KNN asigna la categoría a cada punto basándose en la similitud con sus vecinos más cercanos, lo que permite identificar zonas con diferentes niveles de suministro y consumo, facilitando la toma de decisiones para mejorar la distribución del agua.
+        """)
