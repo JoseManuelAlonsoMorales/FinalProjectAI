@@ -141,14 +141,24 @@ alcaldia_seleccionada, colonia_seleccionada = filtroAlcaldiaColonia(app)
 # Si el usuario selecciona "Introducción", mostramos un resumen de los datos
 with tabs[0]:
     st.markdown("""
-        ## Análisis del Consumo de Agua en la Ciudad de México
+        ## Análisis Integral del Consumo de Agua en la CDMX
 
-        Este proyecto tiene como objetivo explorar y analizar patrones de consumo de agua en distintas colonias de la Ciudad de México, utilizando datos geoespaciales y temporales. La base de datos principal incluye información detallada sobre el consumo de agua por tipo de usuario (doméstico, no doméstico y mixto), promedios de consumo, así como indicadores socioeconómicos y ubicaciones geográficas.
+        El agua es un recurso vital y estratégico para el desarrollo sostenible de la Ciudad de México, una metrópoli con más de 9 millones de habitantes que enfrenta retos complejos relacionados con su distribución, acceso y consumo.
 
-        A través de visualizaciones interactivas y herramientas de análisis, este proyecto busca identificar zonas con posibles problemáticas de suministro, contrastar niveles de consumo entre diferentes regiones, y ofrecer una base informada para la toma de decisiones en torno a la gestión del recurso hídrico en la ciudad.
+        Este proyecto se basa en un exhaustivo análisis de datos geoespaciales y temporales para comprender cómo se distribuye y consume el agua en las distintas colonias de la ciudad. Se incluyen variables detalladas sobre el consumo de agua segmentado por tipo de usuario —doméstico, no doméstico y mixto—, así como indicadores sociodemográficos y económicos que permiten contextualizar el uso del recurso en cada zona.
 
-        El análisis abarca múltiples periodos, permitiendo observar tendencias a lo largo del tiempo y evaluar el impacto de factores como el índice de desarrollo social o la densidad urbana en el uso del agua.
+        A través de visualizaciones interactivas y herramientas analíticas, buscamos:
+
+        - Detectar zonas con fallas o limitaciones en el suministro de agua.
+        - Identificar patrones y disparidades en los niveles de consumo entre regiones.
+        - Evaluar el impacto de factores como el Índice de Desarrollo Social, la densidad poblacional y la infraestructura urbana.
+        - Ofrecer una base sólida para la toma de decisiones en políticas públicas y gestión hídrica.
+
+        Los datos abarcan múltiples periodos, lo que facilita el seguimiento de tendencias temporales y la evaluación de intervenciones o cambios en las políticas de agua. Este análisis contribuye a promover un uso más eficiente y equitativo del agua, apuntando hacia la sustentabilidad y mejora en la calidad de vida de los habitantes de la Ciudad de México.
+
+        En suma, este proyecto es una herramienta clave para técnicos, autoridades y ciudadanos interesados en la gestión responsable de uno de los recursos más importantes para nuestra ciudad y nuestro futuro.
         """)
+
 
 
 # Si el usuario selecciona "Datos", mostramos el DataFrame
