@@ -1,6 +1,6 @@
 numpy
 pandas
+pydeck
 plotly
 scikit-learn
 streamlit
-streamlit-folium
