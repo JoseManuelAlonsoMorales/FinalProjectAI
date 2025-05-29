@@ -334,7 +334,7 @@ with tabs[3]:
         El algoritmo KNN asigna la categoría a cada punto basándose en la similitud con sus vecinos más cercanos, lo que permite identificar zonas con diferentes niveles de suministro y consumo, facilitando la toma de decisiones para mejorar la distribución del agua.
         """)
 
-# Si el usuario selecciona "Clasificación y Segmentación", mostramos el modelo de clasificación
+# Si el usuario selecciona "Mapa de Consumo", mostramos el modelo de clasificación
 with tabs[4]:
     mostrarSubtitulo(alcaldia_seleccionada, colonia_seleccionada)
 
@@ -378,9 +378,7 @@ with tabs[4]:
         st_data = st_folium(mapa, width=900, height=600)
 
         st.markdown("""
-        ### Mapa Interactivo de Consumo de Agua
-
-        Este mapa muestra la distribución geográfica del consumo de agua en las colonias de la Ciudad de México. Puedes usar los filtros de la barra lateral para enfocar el análisis en una alcaldía o colonia específica.
+        Este mapa muestra la distribución geográfica del consumo de agua en las colonias de la Ciudad de México.
 
         - Cada marcador representa una colonia con datos disponibles.
         - Al hacer clic en un punto, se muestra información del consumo total y el índice de desarrollo social.
