@@ -135,7 +135,7 @@ cant_consumida_max_min = np.array(app.getListaConsumoTotal()) # Convertimos la l
 diccionario_alcaldias_colonias = app.getDiccionarioAlcaldiasColonias() # Obtenemos el diccionario de alcaldías y colonias con los datos de transporte y consumo
 
 # Opciones de análisis
-tabs = st.tabs(["Introducción", "Datos", "Análisis de Regresión", "Clasificación y Segmentación", "Mapa de Consumo])
+tabs = st.tabs(["Introducción", "Datos", "Análisis de Regresión", "Clasificación y Segmentación", "Mapa de Consumo"])
 
 alcaldia_seleccionada, colonia_seleccionada = filtroAlcaldiaColonia(app)
 
