@@ -1,10 +1,12 @@
-import streamlit as st
+import folium
 import numpy as np
 import pandas as pd
 import plotly.express as px
 import random
+import streamlit as st
 from sklearn.linear_model import LinearRegression
 from sklearn.neighbors import KNeighborsClassifier
+from streamlit_folium import st_folium
 
 # Configuración de la página
 st.set_page_config(
@@ -133,7 +135,7 @@ cant_consumida_max_min = np.array(app.getListaConsumoTotal()) # Convertimos la l
 diccionario_alcaldias_colonias = app.getDiccionarioAlcaldiasColonias() # Obtenemos el diccionario de alcaldías y colonias con los datos de transporte y consumo
 
 # Opciones de análisis
-tabs = st.tabs(["Introducción", "Datos", "Análisis de Regresión", "Clasificación y Segmentación"])
+tabs = st.tabs(["Introducción", "Datos", "Análisis de Regresión", "Clasificación y Segmentación", "Mapa de Consumo])
 
 alcaldia_seleccionada, colonia_seleccionada = filtroAlcaldiaColonia(app)
 
@@ -330,4 +332,57 @@ with tabs[3]:
         - **Peligro**: cuando el agua transportada es menor o igual al consumo, lo que puede reflejar un riesgo de insuficiencia o desabasto.
 
         El algoritmo KNN asigna la categoría a cada punto basándose en la similitud con sus vecinos más cercanos, lo que permite identificar zonas con diferentes niveles de suministro y consumo, facilitando la toma de decisiones para mejorar la distribución del agua.
+        """)
+
+# Si el usuario selecciona "Clasificación y Segmentación", mostramos el modelo de clasificación
+with tabs[4]:
+    mostrarSubtitulo(alcaldia_seleccionada, colonia_seleccionada)
+
+    # Filtrar DataFrame según selección
+    df_mapa = app.data
+    if alcaldia_seleccionada != "-- Todas las alcaldías --":
+        df_mapa = df_mapa[df_mapa["alcaldia"] == alcaldia_seleccionada]
+    if colonia_seleccionada != "-- Todas las colonias --":
+        df_mapa = df_mapa[df_mapa["colonia"] == colonia_seleccionada]
+
+    # Verificamos que haya datos geográficos
+    if df_mapa.empty:
+        st.warning("No hay datos geoespaciales disponibles para esta selección.")
+    else:
+        # Coordenadas centrales aproximadas para CDMX
+        lat_cdmx = df_mapa["latitud"].mean()
+        lon_cdmx = df_mapa["longitud"].mean()
+
+        # Crear el mapa base
+        mapa = folium.Map(location=[lat_cdmx, lon_cdmx], zoom_start=12)
+
+        # Añadir marcadores por colonia
+        for _, row in df_mapa.iterrows():
+            folium.CircleMarker(
+                location=[row["latitud"], row["longitud"]],
+                radius=5,
+                popup=folium.Popup(
+                    f"""<b>Colonia:</b> {row['colonia']}<br>
+                        <b>Alcaldía:</b> {row['alcaldia']}<br>
+                        <b>Consumo Total:</b> {row['consumo_total']} litros<br>
+                        <b>Índice DES:</b> {row.get('indice_des', 'N/A')}""", 
+                    max_width=300
+                ),
+                color='blue',
+                fill=True,
+                fill_color='cyan',
+                fill_opacity=0.7
+            ).add_to(mapa)
+
+        # Mostrar el mapa en Streamlit
+        st_data = st_folium(mapa, width=900, height=600)
+
+        st.markdown("""
+        ### Mapa Interactivo de Consumo de Agua
+
+        Este mapa muestra la distribución geográfica del consumo de agua en las colonias de la Ciudad de México. Puedes usar los filtros de la barra lateral para enfocar el análisis en una alcaldía o colonia específica.
+
+        - Cada marcador representa una colonia con datos disponibles.
+        - Al hacer clic en un punto, se muestra información del consumo total y el índice de desarrollo social.
+        - El mapa facilita la identificación espacial de patrones de consumo y zonas prioritarias para intervención.
         """)
