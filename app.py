@@ -389,7 +389,7 @@ with tabs[4]:
         st.markdown("""
             ### Mapa Interactivo de Consumo de Agua en la Ciudad de México
 
-            Este mapa muestra la distribución geográfica del consumo de agua en las colonias de la Ciudad de México, filtrado según tu selección.
+            Este mapa muestra la distribución geográfica del consumo de agua en las colonias de la Ciudad de México.
 
             - Cada punto representa una colonia con datos disponibles.
             - Al pasar el cursor o hacer clic en un punto, se muestra información del consumo total y el índice de desarrollo social.
