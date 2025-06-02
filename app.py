@@ -518,13 +518,3 @@ with tabs[5]:
     else:
         st.success("No se encontraron zonas con riesgo inmediato según los datos actuales.")
 
-    st.markdown("""
-    ### ¿Qué hace esta predicción?
-
-    Esta sección aplica los modelos de clasificación y análisis de diferencia entre consumo y suministro para detectar colonias donde:
-
-    - El consumo total es igual o mayor que la cantidad de agua transportada.
-    - Lo cual puede implicar un posible desabasto, riesgo operativo o afectación en el corto plazo.
-
-    Esto permite anticipar fallas en la distribución del agua y tomar medidas preventivas.
-    """)
