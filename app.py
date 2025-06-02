@@ -179,8 +179,8 @@ app.limpiarDataFrame()  # Limpiamos el DataFrame de valores nulos y cadenas vac�
 cant_consumida_max_min = np.array(app.getListaConsumoTotal()) # Convertimos la lista de consumo total a un array de numpy para obtener los valores máximos y mínimos
 diccionario_alcaldias_colonias = app.getDiccionarioAlcaldiasColonias() # Obtenemos el diccionario de alcaldías y colonias con los datos de transporte y consumo
 
-# Opciones de análisis
-tabs = st.tabs(["Introducción", "Datos", "Análisis de Regresión", "Clasificación y Segmentación", "Mapa de Consumo"])
+ # Opciones de análisis
+tabs = st.tabs(["Introducción", "Datos", "Análisis de Regresión", "Clasificación y Segmentación", "Mapa de Consumo", "Predicción de Riesgo"])
 
 alcaldia_seleccionada, colonia_seleccionada = filtroAlcaldiaColonia(app)
 
@@ -279,27 +279,16 @@ with tabs[1]:
 with tabs[2]:
     mostrarSubtitulo(alcaldia_seleccionada, colonia_seleccionada)
 
-    # Recolectar datos según filtros
-    datos_transporte = []
-    datos_consumo = []
+    # Selección interactiva de alcaldía y colonia para regresión
+    alcaldias_reg = sorted(diccionario_alcaldias_colonias.keys())
+    alcaldia_input = st.selectbox("Selecciona la alcaldía para análisis de regresión:", alcaldias_reg)
 
-    if alcaldia_seleccionada == "-- Todas las alcaldías --":
-        # Agregamos todos los datos de todas las alcaldías y colonias
-        for alcaldia in diccionario_alcaldias_colonias:
-            for colonia in diccionario_alcaldias_colonias[alcaldia]:
-                datos_transporte.extend(diccionario_alcaldias_colonias[alcaldia][colonia][0])
-                datos_consumo.extend(diccionario_alcaldias_colonias[alcaldia][colonia][1])
-        
-    elif colonia_seleccionada == "-- Todas las colonias --":
-        for colonia in diccionario_alcaldias_colonias[alcaldia_seleccionada]:
-            datos_transporte.extend(diccionario_alcaldias_colonias[alcaldia_seleccionada][colonia][0])
-            datos_consumo.extend(diccionario_alcaldias_colonias[alcaldia_seleccionada][colonia][1])
-        
-    else:
-        datos_transporte = diccionario_alcaldias_colonias[alcaldia_seleccionada][colonia_seleccionada][0]
-        datos_consumo = diccionario_alcaldias_colonias[alcaldia_seleccionada][colonia_seleccionada][1]
+    colonias_reg = sorted(diccionario_alcaldias_colonias[alcaldia_input].keys())
+    colonia_input = st.selectbox("Selecciona la colonia:", colonias_reg)
 
-    # Validar datos
+    datos_transporte = diccionario_alcaldias_colonias[alcaldia_input][colonia_input][0]
+    datos_consumo = diccionario_alcaldias_colonias[alcaldia_input][colonia_input][1]
+
     if len(datos_transporte) > 1 and len(datos_transporte) == len(datos_consumo):
         X = np.array(datos_transporte).reshape(-1, 1)
         Y = np.array(datos_consumo)
@@ -308,19 +297,19 @@ with tabs[2]:
         modelo.fit(X, Y)
         y_pred = modelo.predict(X)
 
-        df_plot = pd.DataFrame({
-            "Agua Transportada": datos_transporte,
-            "Consumo de Agua": datos_consumo,
-            "Predicción de Consumo": y_pred
-        })
+        # Visualización con matplotlib
+        import matplotlib.pyplot as plt
+        fig, ax = plt.subplots()
+        ax.scatter(X, Y, color='blue', label='Datos reales')
+        ax.plot(X, y_pred, color='red', label='Regresión lineal')
+        ax.scatter(X, y_pred, color='green', label='Predicción')
+        ax.set_ylim(-5, 3000)
+        ax.set_xlabel('Agua Transportada')
+        ax.set_ylabel('Consumo de Agua')
+        ax.set_title(f'Regresión lineal para {colonia_input}, {alcaldia_input}')
+        ax.legend()
 
-        fig = px.scatter(df_plot, x="Agua Transportada", y="Consumo de Agua", 
-                         color_discrete_sequence=["blue"])
-        fig.add_scatter(mode="lines", name="Línea de Regresión", line=dict(color="red"),
-                        x=df_plot["Agua Transportada"], y=df_plot["Predicción de Consumo"])
-        
-        st.plotly_chart(fig)
-
+        st.pyplot(fig)
     else:
         st.warning("No hay suficientes datos para entrenar el modelo.")
 
@@ -484,3 +473,58 @@ with tabs[4]:
             - Las burbujas rojas indican la cantidad de reportes en esa ubicación, con tamaño proporcional a la cantidad.
             - Usa el selector para visualizar uno o ambos indicadores y explorar las zonas críticas.
         """)
+
+
+# Nueva pestaña: Predicción de Zonas en Riesgo de Afectación
+with tabs[5]:
+    st.subheader("Predicción de Zonas en Riesgo de Afectación")
+
+    zonas_en_riesgo = []
+
+    for alcaldia in diccionario_alcaldias_colonias:
+        for colonia in diccionario_alcaldias_colonias[alcaldia]:
+            transporte = diccionario_alcaldias_colonias[alcaldia][colonia][0]
+            consumo = diccionario_alcaldias_colonias[alcaldia][colonia][1]
+
+            for t, c in zip(transporte, consumo):
+                diferencia = t - c
+                promedio = (t + c) / 2
+
+                if diferencia <= 0:
+                    zonas_en_riesgo.append({
+                        "alcaldia": alcaldia,
+                        "colonia": colonia,
+                        "agua_transportada": t,
+                        "consumo": c,
+                        "diferencia": diferencia
+                    })
+
+    if zonas_en_riesgo:
+        df_riesgo = pd.DataFrame(zonas_en_riesgo)
+        df_riesgo = df_riesgo.groupby(['alcaldia', 'colonia']).agg({
+            'agua_transportada': 'mean',
+            'consumo': 'mean',
+            'diferencia': 'mean'
+        }).reset_index()
+
+        df_riesgo = df_riesgo.sort_values(by="diferencia")
+
+        st.write("Zonas que podrían verse afectadas próximamente por bajo suministro y alto consumo reportado:")
+        st.dataframe(df_riesgo)
+
+        fig = px.bar(df_riesgo.head(10), x="colonia", y="diferencia", color="alcaldia", title="Top 10 Zonas en Riesgo")
+        st.plotly_chart(fig)
+
+    else:
+        st.success("No se encontraron zonas con riesgo inmediato según los datos actuales.")
+
+    st.markdown("""
+    ### ¿Qué hace esta predicción?
+
+    Esta sección aplica los modelos de clasificación y análisis de diferencia entre consumo y suministro para detectar colonias donde:
+
+    - El consumo total es igual o mayor que la cantidad de agua transportada.
+    - Lo cual puede implicar un posible desabasto, riesgo operativo o afectación en el corto plazo.
+
+    Esto permite anticipar fallas en la distribución del agua y tomar medidas preventivas.
+    """)
