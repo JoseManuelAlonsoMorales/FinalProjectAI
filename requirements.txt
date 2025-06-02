@@ -1,4 +1,5 @@
 folium
+matplotlib
 numpy
 pandas
 pydeck
