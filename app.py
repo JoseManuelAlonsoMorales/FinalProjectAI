@@ -7,6 +7,10 @@ import streamlit as st
 from sklearn.linear_model import LinearRegression
 from sklearn.neighbors import KNeighborsClassifier
 
+import folium
+from folium.plugins import HeatMap
+from streamlit_folium import st_folium
+
 # Configuración de la página
 st.set_page_config(
     page_title = 'Proyecto IA - Consumo de Agua en CDMX',
@@ -26,439 +30,457 @@ st.set_page_config(
     }
 )
 
-# Cargamos los datos
+# Cargamos los datos desde un archivo CSV
 class Application:
-    def __init__(self, consumo_path, reportes_2024_path, reportes_hist_path):
-        try:
-            self.__df_consumo = pd.read_csv(consumo_path)
-        except FileNotFoundError:
-            st.error(f"Error: No se encontró el archivo de consumo en {consumo_path}")
-            self.__df_consumo = pd.DataFrame() # Empty DataFrame
-        try:
-            self.__df_reportes_2024 = pd.read_csv(reportes_2024_path)
-        except FileNotFoundError:
-            st.error(f"Error: No se encontró el archivo de reportes 2024 en {reportes_2024_path}")
-            self.__df_reportes_2024 = pd.DataFrame()
-        try:
-            self.__df_reportes_hist = pd.read_csv(reportes_hist_path)
-        except FileNotFoundError:
-            st.error(f"Error: No se encontró el archivo de reportes históricos en {reportes_hist_path}")
-            self.__df_reportes_hist = pd.DataFrame()
+    def __init__(self, path):
+        self.__df = pd.read_csv(path)
+        self.__colonias = self.__df['colonia'].dropna().unique().tolist()
+        self.__alcaldias = self.__df['alcaldia'].dropna().unique().tolist()
+        self.__consumo_total = self.__df['consumo_total'].unique()
+        
+    def getDataFrame(self):
+        return self.__df
 
-        # Atributos para los dataframes limpios
-        self.data = pd.DataFrame()
-        self.reportes_2024_data = pd.DataFrame()
-        self.reportes_hist_data = pd.DataFrame()
+    def getColonias(self):
+        return self.__colonias
+    
+    def getAlcaldias(self):
+        return self.__alcaldias
+    
+    def getConsumoTotal(self):
+        return self.__consumo_total
+    
+    def getListaColonias(self):
+        return self.data['colonia'].tolist()
+    
+    def getListaAlcaldias(self):
+        return self.data['alcaldia'].tolist()
+    
+    def getListaConsumoTotal(self):
+        return self.data['consumo_total'].tolist()
 
-        if not self.__df_consumo.empty:
-            self.__colonias = self.__df_consumo['colonia'].dropna().unique().tolist()
-            self.__alcaldias = self.__df_consumo['alcaldia'].dropna().unique().tolist()
-            self.__consumo_total_unique = self.__df_consumo['consumo_total'].unique() # Renamed to avoid conflict
-        else:
-            self.__colonias = []
-            self.__alcaldias = []
-            self.__consumo_total_unique = []
-
-
-    def getConsumoDataFrame(self): # Original df
+    def getConsumoDataFrame(self):
         return self.__df_consumo
 
-    def getReportes2024DataFrame(self): # Original df
+    def getReportes2024DataFrame(self):
         return self.__df_reportes_2024
 
-    def getReportesHistoricoDataFrame(self): # Original df
+    def getReportesHistoricoDataFrame(self):
         return self.__df_reportes_hist
 
-    def getColonias(self): # From consumption data
+    def getColonias(self):
         return self.__colonias
 
-    def getAlcaldias(self): # From consumption data
+    def getAlcaldias(self):
         return self.__alcaldias
 
-    def getConsumoTotalUnique(self): # From consumption data
-        return self.__consumo_total_unique
+    def getConsumoTotal(self):
+        return self.__consumo_total
 
-    def getListaColonias(self): # From cleaned consumption data (self.data)
-        if not self.data.empty:
-            return self.data['colonia'].tolist()
-        return []
+    def getListaColonias(self):
+        return self.data['colonia'].tolist()
 
-    def getListaAlcaldias(self): # From cleaned consumption data (self.data)
-        if not self.data.empty:
-            return self.data['alcaldia'].tolist()
-        return []
+    def getListaAlcaldias(self):
+        return self.data['alcaldia'].tolist()
 
-    def getListaConsumoTotal(self): # From cleaned consumption data (self.data)
-        if not self.data.empty:
-            return self.data['consumo_total'].tolist()
-        return []
+    def getListaConsumoTotal(self):
+        return self.data['consumo_total'].tolist()
+    
+    def limpiarDataFrame(self):
+        # Limpiamos valores nulos y cadenas vacías en alcaldía y colonia
+        self.data = self.__df.dropna(subset=['alcaldia', 'colonia'])
 
-    def limpiar_dataframes(self):
-        # Limpiar DataFrame de Consumo
-        if not self.__df_consumo.empty:
-            self.data = self.__df_consumo.copy()
-            self.data.dropna(subset=['alcaldia', 'colonia', 'latitud', 'longitud'], inplace=True)
-            self.data['alcaldia'] = self.data['alcaldia'].astype(str).str.strip()
-            self.data['colonia'] = self.data['colonia'].astype(str).str.strip()
-            self.data = self.data[(self.data['alcaldia'] != '') & (self.data['alcaldia'].notna())]
-            self.data = self.data[(self.data['colonia'] != '') & (self.data['colonia'].notna())]
-             # Asegurar que latitud y longitud sean numéricos
-            self.data['latitud'] = pd.to_numeric(self.data['latitud'], errors='coerce')
-            self.data['longitud'] = pd.to_numeric(self.data['longitud'], errors='coerce')
-            self.data.dropna(subset=['latitud', 'longitud'], inplace=True)
+        # Convertimos alcaldía y colonia a tipo string y eliminamos los espacios en blanco
+        self.data['alcaldia'] = self.data['alcaldia'].astype(str).str.strip()
+        self.data['colonia'] = self.data['colonia'].astype(str).str.strip()
 
-
-        # Limpiar DataFrame de Reportes 2024
-        if not self.__df_reportes_2024.empty:
-            self.reportes_2024_data = self.__df_reportes_2024.copy()
-            self.reportes_2024_data.dropna(subset=['latitud', 'longitud', 'alcaldia_catalogo', 'colonia_catalogo'], inplace=True)
-            self.reportes_2024_data.rename(columns={'alcaldia_catalogo': 'alcaldia', 'colonia_catalogo': 'colonia'}, inplace=True)
-            self.reportes_2024_data['alcaldia'] = self.reportes_2024_data['alcaldia'].astype(str).str.strip()
-            self.reportes_2024_data['colonia'] = self.reportes_2024_data['colonia'].astype(str).str.strip()
-            self.reportes_2024_data['latitud'] = pd.to_numeric(self.reportes_2024_data['latitud'], errors='coerce')
-            self.reportes_2024_data['longitud'] = pd.to_numeric(self.reportes_2024_data['longitud'], errors='coerce')
-            self.reportes_2024_data.dropna(subset=['latitud', 'longitud'], inplace=True)
-
-        # Limpiar DataFrame de Reportes Históricos
-        if not self.__df_reportes_hist.empty:
-            self.reportes_hist_data = self.__df_reportes_hist.copy()
-            self.reportes_hist_data.dropna(subset=['latitud', 'longitud', 'alcaldia'], inplace=True)
-            
-            # Unificar columnas de colonia
-            if 'colonia_datos_abiertos' in self.reportes_hist_data.columns and 'colonia_registro_sacmex' in self.reportes_hist_data.columns:
-                self.reportes_hist_data['colonia'] = self.reportes_hist_data['colonia_datos_abiertos'].fillna(self.reportes_hist_data['colonia_registro_sacmex'])
-            elif 'colonia_datos_abiertos' in self.reportes_hist_data.columns:
-                self.reportes_hist_data['colonia'] = self.reportes_hist_data['colonia_datos_abiertos']
-            elif 'colonia_registro_sacmex' in self.reportes_hist_data.columns:
-                self.reportes_hist_data['colonia'] = self.reportes_hist_data['colonia_registro_sacmex']
-            else:
-                self.reportes_hist_data['colonia'] = np.nan # O manejar de otra forma si ninguna existe
-            
-            self.reportes_hist_data.dropna(subset=['colonia'], inplace=True)
-            self.reportes_hist_data['alcaldia'] = self.reportes_hist_data['alcaldia'].astype(str).str.strip()
-            self.reportes_hist_data['colonia'] = self.reportes_hist_data['colonia'].astype(str).str.strip()
-            self.reportes_hist_data['latitud'] = pd.to_numeric(self.reportes_hist_data['latitud'], errors='coerce')
-            self.reportes_hist_data['longitud'] = pd.to_numeric(self.reportes_hist_data['longitud'], errors='coerce')
-            self.reportes_hist_data.dropna(subset=['latitud', 'longitud'], inplace=True)
-
+        # Eliminamos filas en donde el valor de la alcaldía sea nan o una cadena vacía
+        self.data = self.data[(self.data['alcaldia'] != '') & (self.data['alcaldia'].notna())]
+    
+    # Creamos una lista para almacenar la cantidad de agua transportada por colonia
     def generarAguaTransportada(self, seed=2004, max_value=15000):
-        if self.data.empty or 'consumo_total' not in self.data.columns or self.data['consumo_total'].empty:
-            return []
         consumo = self.data["consumo_total"]
-        if consumo.min() > max_value : # Evitar error en randint si min > max_value
-             min_val_for_random = max_value -1 
-        else:
-            min_val_for_random = consumo.min()
-
         random.seed(seed)
-        return [random.randint(int(min_val_for_random), max_value) for _ in range(len(consumo))]
+        return [random.randint(int(consumo.min()), max_value) for _ in range(len(consumo))]
 
+    # Diccionario para almacenar las alcaldías y sus colonias con los datos de transporte y consumo
     def getDiccionarioAlcaldiasColonias(self):
-        if self.data.empty:
-            return {}
-            
-        colonias_list = self.getListaColonias()
-        alcaldias_list = self.getListaAlcaldias()
-        consumo_total_list = self.getListaConsumoTotal()
-        agua_transportada_list = self.generarAguaTransportada()
-
-        if not agua_transportada_list: # Si no se pudo generar agua transportada
-            return {}
+        colonias = self.getListaColonias()
+        alcaldias = self.getListaAlcaldias()
+        consumo_total = self.data["consumo_total"].tolist()
+        agua_transportada = self.generarAguaTransportada()
 
         dicc = {}
-        for i in range(len(alcaldias_list)):
-            alcaldia = alcaldias_list[i]
-            colonia = colonias_list[i]
-            transporte = agua_transportada_list[i]
-            consumo = consumo_total_list[i]
+        for i in range(len(alcaldias)):
+            alcaldia = alcaldias[i]
+            colonia = colonias[i]
+            transporte = agua_transportada[i]
+            consumo = consumo_total[i]
 
             if alcaldia not in dicc:
                 dicc[alcaldia] = {}
-            if colonia not in dicc[alcaldia]:
-                dicc[alcaldia][colonia] = [[], []] # Inicializar listas para transporte y consumo
-            
-            dicc[alcaldia][colonia][0].append(transporte)
-            dicc[alcaldia][colonia][1].append(consumo)
+            if colonia in dicc[alcaldia]:
+                dicc[alcaldia][colonia][0].append(transporte)
+                dicc[alcaldia][colonia][1].append(consumo)
+            else:
+                dicc[alcaldia][colonia] = [[transporte], [consumo]]
+
         return dicc
 
-def filtroAlcaldiaColonia(app_instance): # Renombrado para evitar confusión
+def filtroAlcaldiaColonia(app):
     st.sidebar.title("Filtros")
 
-    alcaldias_options = ["-- Todas las alcaldías --"] + sorted(list(app_instance.getAlcaldias()))
-    alcaldia_seleccionada = st.sidebar.selectbox("Selecciona una alcaldía", alcaldias_options)
+    alcaldias = sorted(list(app.getAlcaldias()))
+    alcaldias = ["-- Todas las alcaldías --"] + alcaldias
+    alcaldia_seleccionada = st.sidebar.selectbox("Selecciona una alcaldía", alcaldias)
 
-    colonia_seleccionada = "-- Todas las colonias --"
     if alcaldia_seleccionada != "-- Todas las alcaldías --":
-        if not app_instance.data.empty:
-            colonias_filtradas = app_instance.data[app_instance.data["alcaldia"] == alcaldia_seleccionada]["colonia"].unique()
-            colonias_options = ["-- Todas las colonias --"] + sorted(list(colonias_filtradas))
-            colonia_seleccionada = st.sidebar.selectbox("Selecciona una colonia:", colonias_options)
-        else:
-            st.sidebar.text("No hay datos de consumo para filtrar colonias.")
+        colonias_filtradas = app.data[app.data["alcaldia"] == alcaldia_seleccionada]["colonia"].unique()
+        colonias = sorted(colonias_filtradas)
+        colonias = ["-- Todas las colonias --"] + colonias
+        colonia_seleccionada = st.sidebar.selectbox("Selecciona una colonia:", colonias)
+    else:
+        colonia_seleccionada = "-- Todas las colonias --"
     
     return alcaldia_seleccionada, colonia_seleccionada
 
 def mostrarSubtitulo(alcaldia_seleccionada, colonia_seleccionada):
+    # Subheader de los filtros aplicados
     if alcaldia_seleccionada != "-- Todas las alcaldías --":
         if colonia_seleccionada == "-- Todas las colonias --":
             st.subheader(f"Datos en {alcaldia_seleccionada}")
         else:
             st.subheader(f"Datos en {alcaldia_seleccionada} para la colonia {colonia_seleccionada}")
-    else:
-        st.subheader("Datos para toda la CDMX")
-
-
-# --- INICIO DE LA APP STREAMLIT ---
-
-# URLs o paths a los archivos CSV
-consumo_file_path = 'data/consumo_agua_historico_2019.csv'
-reportes_2024_file_path = 'data/reportes_agua_2024_01.csv'
-reportes_hist_file_path = 'data/reportes_agua_hist.csv'
 
 # Inicializamos la aplicación y cargamos los datos
-app_instance = Application(consumo_file_path, reportes_2024_file_path, reportes_hist_file_path)
+app = Application(r'https://raw.githubusercontent.com/JoseManuelAlonsoMorales/FinalProjectAI/main/data/consumo_agua_historico_2019.csv')  # URL del archivo CSV
+df = app.getDataFrame()
 
-st.title('Análisis del Consumo y Reportes de Agua en CDMX')
+# Cargamos reportes de agua 2024 y reportes históricos
+df_reportes_2024 = pd.read_csv('data/reportes_agua_2024_01.csv')
+df_reportes_hist = pd.read_csv('data/reportes_agua_hist.csv')
 
-# Limpiamos los DataFrames
-app_instance.limpiar_dataframes()
+# Normaliza columnas para facilitar merge
+df_reportes_2024 = df_reportes_2024.rename(columns={'alcaldia_catalogo':'alcaldia','colonia_catalogo':'colonia'})
+df_reportes_hist = df_reportes_hist.rename(columns={'alcaldia':'alcaldia','colonia_datos_abiertos':'colonia'})
 
-# Obtenemos datos para análisis (basados en consumo)
-diccionario_alcaldias_colonias = app_instance.getDiccionarioAlcaldiasColonias()
+df_reportes = pd.concat([
+    df_reportes_2024[['latitud','longitud','alcaldia','colonia']],
+    df_reportes_hist[['latitud','longitud','alcaldia','colonia']]
+], ignore_index=True)
+
+reportes_group = df_reportes.groupby(['latitud','longitud']).size().reset_index(name='num_reportes')
+
+st.title('Análisis del Consumo de Agua en CDMX')
+
+# Comenzamos a trabajar con los datos
+app.limpiarDataFrame()  # Limpiamos el DataFrame de valores nulos y cadenas vacías
+
+cant_consumida_max_min = np.array(app.getListaConsumoTotal()) # Convertimos la lista de consumo total a un array de numpy para obtener los valores máximos y mínimos
+diccionario_alcaldias_colonias = app.getDiccionarioAlcaldiasColonias() # Obtenemos el diccionario de alcaldías y colonias con los datos de transporte y consumo
 
 # Opciones de análisis
-tabs_titles = ["Introducción", "Datos de Consumo", "Análisis de Regresión", "Clasificación y Segmentación", "Mapa Interactivo"]
-tabs = st.tabs(tabs_titles)
+tabs = st.tabs(["Introducción", "Datos", "Análisis de Regresión", "Clasificación y Segmentación", "Mapa de Consumo"])
 
-# Filtros en la sidebar
-alcaldia_seleccionada, colonia_seleccionada = filtroAlcaldiaColonia(app_instance)
+alcaldia_seleccionada, colonia_seleccionada = filtroAlcaldiaColonia(app)
 
-# Tab de Introducción
+# Entrenamiento general del modelo de clasificación (con todos los datos del diccionario)
+ArrayDatos = []
+DatosY = []
+
+for alcaldia in diccionario_alcaldias_colonias:
+    for colonia in diccionario_alcaldias_colonias[alcaldia]:
+        transporte_list = diccionario_alcaldias_colonias[alcaldia][colonia][0]
+        consumo_list = diccionario_alcaldias_colonias[alcaldia][colonia][1]
+
+        for transporte, consumo in zip(transporte_list, consumo_list):
+            ArrayDatos.append([transporte, consumo])
+            diferencia = transporte - consumo
+            promedio = (transporte + consumo) / 2
+
+            if diferencia <= 0:
+                DatosY.append(0)  # Peligro
+            elif diferencia >= promedio:
+                DatosY.append(2)  # Perfecto
+            else:
+                DatosY.append(1)  # Medio
+
+Xclasificacion = np.array(ArrayDatos)
+YClasificacion = np.array(DatosY)
+
+modelo_general_knn = KNeighborsClassifier(n_neighbors=20)
+modelo_general_knn.fit(Xclasificacion, YClasificacion)
+
+# Si el usuario selecciona "Introducción", mostramos un resumen de los datos
 with tabs[0]:
     st.markdown("""
         ## Análisis Integral del Consumo de Agua en la CDMX
-        El agua es un recurso vital y estratégico... (Tu texto de introducción)
+
+        El agua es un recurso vital y estratégico para el desarrollo sostenible de la Ciudad de México, una metrópoli con más de 9 millones de habitantes que enfrenta retos complejos relacionados con su distribución, acceso y consumo.
+
+        Este proyecto se basa en un exhaustivo análisis de datos geoespaciales y temporales para comprender cómo se distribuye y consume el agua en las distintas colonias de la ciudad. Se incluyen variables detalladas sobre el consumo de agua segmentado por tipo de usuario —doméstico, no doméstico y mixto—, así como indicadores sociodemográficos y económicos que permiten contextualizar el uso del recurso en cada zona.
+
+        A través de visualizaciones interactivas y herramientas analíticas, buscamos:
+
+        - Detectar zonas con fallas o limitaciones en el suministro de agua.
+        - Identificar patrones y disparidades en los niveles de consumo entre regiones.
+        - Evaluar el impacto de factores como el Índice de Desarrollo Social, la densidad poblacional y la infraestructura urbana.
+        - Ofrecer una base sólida para la toma de decisiones en políticas públicas y gestión hídrica.
+
+        Los datos abarcan múltiples periodos, lo que facilita el seguimiento de tendencias temporales y la evaluación de intervenciones o cambios en las políticas de agua. Este análisis contribuye a promover un uso más eficiente y equitativo del agua, apuntando hacia la sustentabilidad y mejora en la calidad de vida de los habitantes de la Ciudad de México.
+
+        En suma, este proyecto es una herramienta clave para técnicos, autoridades y ciudadanos interesados en la gestión responsable de uno de los recursos más importantes para nuestra ciudad y nuestro futuro.
         """)
 
-# Tab de Datos
+
+
+# Si el usuario selecciona "Datos", mostramos el DataFrame
 with tabs[1]:
     mostrarSubtitulo(alcaldia_seleccionada, colonia_seleccionada)
-    
-    df_consumo_filtrado = app_instance.data
-    if not df_consumo_filtrado.empty:
-        if alcaldia_seleccionada != "-- Todas las alcaldías --":
-            df_consumo_filtrado = df_consumo_filtrado[df_consumo_filtrado["alcaldia"] == alcaldia_seleccionada]
-        if colonia_seleccionada != "-- Todas las colonias --":
-            df_consumo_filtrado = df_consumo_filtrado[df_consumo_filtrado["colonia"] == colonia_seleccionada]
-        
-        st.dataframe(df_consumo_filtrado)
-        st.markdown("""
-            En esta sección puedes explorar el conjunto de datos de **consumo de agua**. (Descripción de columnas)...
-            """)
-    else:
-        st.warning("No hay datos de consumo disponibles para mostrar.")
 
-# Tab de Análisis de Regresión
+    # Aplicar filtros según selección
+    df_filtrado = app.data
+
+    if alcaldia_seleccionada != "-- Todas las alcaldías --":
+        df_filtrado = df_filtrado[df_filtrado["alcaldia"] == alcaldia_seleccionada]
+
+    if colonia_seleccionada != "-- Todas las colonias --":
+        df_filtrado = df_filtrado[df_filtrado["colonia"] == colonia_seleccionada]
+    
+    st.dataframe(df_filtrado)
+
+    st.markdown("""
+        En esta sección puedes explorar el conjunto de datos que contiene información detallada sobre el consumo de agua en distintas colonias y alcaldías de la Ciudad de México.
+
+        El DataFrame incluye las siguientes columnas principales:
+
+        - **fecha_referencia:** Fecha del registro del consumo.
+        - **anio:** Año al que corresponde el dato.
+        - **bimestre:** Periodo bimestral del año.
+        - **consumo_total_mixto:** Consumo total de agua para usuarios mixtos (litros).
+        - **consumo_prom_dom:** Consumo promedio de agua para usuarios domésticos (litros).
+        - **consumo_total_dom:** Consumo total de agua para usuarios domésticos (litros).
+        - **consumo_prom_mixto:** Consumo promedio para usuarios mixtos (litros).
+        - **consumo_total:** Consumo total combinado (litros).
+        - **consumo_prom:** Consumo promedio combinado (litros).
+        - **consumo_prom_no_dom:** Consumo promedio para usuarios no domésticos (litros).
+        - **consumo_total_no_dom:** Consumo total para usuarios no domésticos (litros).
+        - **indice_des:** Índice de desarrollo social asociado a la colonia.
+        - **colonia:** Nombre de la colonia.
+        - **alcaldia:** Nombre de la alcaldía.
+        - **latitud:** Coordenada geográfica de latitud.
+        - **longitud:** Coordenada geográfica de longitud.
+
+        Esta información permite un análisis detallado y localizado del consumo hídrico, facilitando la identificación de patrones y posibles áreas con retos en el suministro de agua.
+        """)
+
+
+# Si el usuario selecciona "Análisis de Regresión", mostramos el modelo de regresión lineal
 with tabs[2]:
     mostrarSubtitulo(alcaldia_seleccionada, colonia_seleccionada)
+
+    # Recolectar datos según filtros
     datos_transporte = []
     datos_consumo = []
 
-    if not diccionario_alcaldias_colonias:
-        st.warning("No hay datos procesados para el análisis de regresión.")
-    else:
-        if alcaldia_seleccionada == "-- Todas las alcaldías --":
-            for alcaldia_data in diccionario_alcaldias_colonias.values():
-                for colonia_data in alcaldia_data.values():
-                    datos_transporte.extend(colonia_data[0])
-                    datos_consumo.extend(colonia_data[1])
-        elif alcaldia_seleccionada in diccionario_alcaldias_colonias:
-            alcaldia_actual = diccionario_alcaldias_colonias[alcaldia_seleccionada]
-            if colonia_seleccionada == "-- Todas las colonias --":
-                for colonia_data in alcaldia_actual.values():
-                    datos_transporte.extend(colonia_data[0])
-                    datos_consumo.extend(colonia_data[1])
-            elif colonia_seleccionada in alcaldia_actual:
-                colonia_actual = alcaldia_actual[colonia_seleccionada]
-                datos_transporte.extend(colonia_actual[0])
-                datos_consumo.extend(colonia_actual[1])
+    if alcaldia_seleccionada == "-- Todas las alcaldías --":
+        # Agregamos todos los datos de todas las alcaldías y colonias
+        for alcaldia in diccionario_alcaldias_colonias:
+            for colonia in diccionario_alcaldias_colonias[alcaldia]:
+                datos_transporte.extend(diccionario_alcaldias_colonias[alcaldia][colonia][0])
+                datos_consumo.extend(diccionario_alcaldias_colonias[alcaldia][colonia][1])
         
-        if len(datos_transporte) > 1 and len(datos_transporte) == len(datos_consumo):
-            X = np.array(datos_transporte).reshape(-1, 1)
-            Y = np.array(datos_consumo)
-            modelo = LinearRegression().fit(X, Y)
-            y_pred = modelo.predict(X)
-            df_plot = pd.DataFrame({"Agua Transportada": datos_transporte, "Consumo de Agua": datos_consumo, "Predicción de Consumo": y_pred})
-            fig = px.scatter(df_plot, x="Agua Transportada", y="Consumo de Agua", color_discrete_sequence=["blue"])
-            fig.add_scatter(x=df_plot["Agua Transportada"], y=df_plot["Predicción de Consumo"], mode="lines", name="Línea de Regresión", line=dict(color="red"))
-            st.plotly_chart(fig)
-        else:
-            st.warning("No hay suficientes datos para entrenar el modelo con los filtros seleccionados.")
-        st.markdown("### Análisis con Regresión Lineal... (Tu texto explicativo)")
+    elif colonia_seleccionada == "-- Todas las colonias --":
+        for colonia in diccionario_alcaldias_colonias[alcaldia_seleccionada]:
+            datos_transporte.extend(diccionario_alcaldias_colonias[alcaldia_seleccionada][colonia][0])
+            datos_consumo.extend(diccionario_alcaldias_colonias[alcaldia_seleccionada][colonia][1])
+        
+    else:
+        datos_transporte = diccionario_alcaldias_colonias[alcaldia_seleccionada][colonia_seleccionada][0]
+        datos_consumo = diccionario_alcaldias_colonias[alcaldia_seleccionada][colonia_seleccionada][1]
 
-# Tab de Clasificación y Segmentación
+    # Validar datos
+    if len(datos_transporte) > 1 and len(datos_transporte) == len(datos_consumo):
+        X = np.array(datos_transporte).reshape(-1, 1)
+        Y = np.array(datos_consumo)
+
+        modelo = LinearRegression()
+        modelo.fit(X, Y)
+        y_pred = modelo.predict(X)
+
+        df_plot = pd.DataFrame({
+            "Agua Transportada": datos_transporte,
+            "Consumo de Agua": datos_consumo,
+            "Predicción de Consumo": y_pred
+        })
+
+        fig = px.scatter(df_plot, x="Agua Transportada", y="Consumo de Agua", 
+                         color_discrete_sequence=["blue"])
+        fig.add_scatter(mode="lines", name="Línea de Regresión", line=dict(color="red"),
+                        x=df_plot["Agua Transportada"], y=df_plot["Predicción de Consumo"])
+        
+        st.plotly_chart(fig)
+
+    else:
+        st.warning("No hay suficientes datos para entrenar el modelo.")
+
+    st.markdown("""
+        ### Análisis con Regresión Lineal
+
+        La regresión lineal es un modelo estadístico que busca encontrar la relación entre dos variables cuantitativas. En este caso, analizamos cómo el **agua transportada** influye en el **consumo de agua**.
+
+        - **Los puntos en el gráfico** representan observaciones individuales: cada punto muestra un par de valores de agua transportada y consumo de agua correspondientes a una colonia o alcaldía.
+        - **La línea roja (pendiente)** es la línea de regresión, que indica la tendencia general de los datos. Esta línea minimiza la distancia entre ella y todos los puntos.
+        - **La pendiente de la línea** nos muestra cómo cambia el consumo esperado cuando cambia la cantidad de agua transportada:
+        - Si la pendiente es positiva (hacia arriba), significa que a mayor agua transportada, mayor es el consumo de agua esperado.
+        - Si la pendiente es negativa (hacia abajo), indicaría que un aumento en el agua transportada se asocia con una disminución en el consumo, lo cual sería poco común en este contexto.
+        
+        Este análisis nos ayuda a entender y predecir el comportamiento del consumo en función del suministro de agua, facilitando la toma de decisiones para una mejor gestión del recurso.
+        """)
+
+# Si el usuario selecciona "Clasificación y Segmentación", mostramos el modelo de clasificación
 with tabs[3]:
     mostrarSubtitulo(alcaldia_seleccionada, colonia_seleccionada)
+    
+    # Construcción de datos de entrada
     registros = []
 
-    if not diccionario_alcaldias_colonias:
-        st.warning("No hay datos procesados para el análisis de clasificación.")
-    else:
-        for alcaldia_nombre, alcaldia_data in diccionario_alcaldias_colonias.items():
-            if alcaldia_seleccionada != "-- Todas las alcaldías --" and alcaldia_nombre != alcaldia_seleccionada:
+    for alcaldia, colonias_dict in diccionario_alcaldias_colonias.items():
+        if alcaldia_seleccionada != "-- Todas las alcaldías --" and alcaldia != alcaldia_seleccionada:
+            continue
+
+        for colonia, valores in colonias_dict.items():
+            if colonia_seleccionada != "-- Todas las colonias --" and colonia != colonia_seleccionada:
                 continue
-            for colonia_nombre, valores in alcaldia_data.items():
-                if colonia_seleccionada != "-- Todas las colonias --" and colonia_nombre != colonia_seleccionada:
-                    continue
-                transporte_list, consumo_list = valores[0], valores[1]
-                for transporte, consumo in zip(transporte_list, consumo_list):
-                    diferencia = transporte - consumo
-                    promedio = (transporte + consumo) / 2 if (transporte + consumo) > 0 else 0 # Avoid division by zero
-                    categoria = "Medio" # Default
-                    if diferencia <= 0: categoria = "Peligro"
-                    elif promedio > 0 and diferencia >= promedio : categoria = "Perfecto" # Check promedio > 0
 
-                    registros.append({"Agua Transportada": transporte, "Consumo de Agua": consumo, "Categoría": categoria})
-        
-        if registros:
-            df_clasificacion = pd.DataFrame(registros)
-            X_clas = df_clasificacion[["Agua Transportada", "Consumo de Agua"]].values
-            y_map = {"Peligro": 0, "Medio": 1, "Perfecto": 2}
-            y_clas = df_clasificacion["Categoría"].map(y_map).values
-            if len(np.unique(y_clas)) > 1 and len(X_clas) >= 5 : # KNN needs at least n_neighbors samples and more than 1 class
-                 knn = KNeighborsClassifier(n_neighbors=min(5, len(X_clas))) # Adjust n_neighbors
-                 knn.fit(X_clas, y_clas)
-                 fig_clas = px.scatter(df_clasificacion, x="Agua Transportada", y="Consumo de Agua", color="Categoría", symbol="Categoría",
-                                  labels={"Agua Transportada": "Agua Transportada (L)", "Consumo de Agua": "Consumo de Agua (L)"})
-                 st.plotly_chart(fig_clas)
-            else:
-                st.warning("No hay suficientes datos o diversidad de categorías para el modelo KNN con los filtros seleccionados.")
-        else:
-            st.warning("No hay datos disponibles para la clasificación con los filtros seleccionados.")
-        st.markdown("### Análisis con Modelo de Clasificación... (Tu texto explicativo)")
+            transporte_list = valores[0]
+            consumo_list = valores[1]
 
-# Tab de Mapa Interactivo
+            for transporte, consumo in zip(transporte_list, consumo_list):
+                diferencia = transporte - consumo
+                promedio = (transporte + consumo) / 2
+
+                if diferencia <= 0:
+                    categoria = "Peligro"
+                elif diferencia >= promedio:
+                    categoria = "Perfecto"
+                else:
+                    categoria = "Medio"
+
+                registros.append({
+                    "Agua Transportada": transporte,
+                    "Consumo de Agua": consumo,
+                    "Categoría": categoria
+                })
+
+    # Verificación
+    if not registros:
+        st.warning("No hay datos disponibles para la selección.")
+    else:
+        df_clasificacion = pd.DataFrame(registros)
+
+        # Clasificación usando el modelo previamente entrenado
+        X = df_clasificacion[["Agua Transportada", "Consumo de Agua"]].values
+        y_pred = modelo_general_knn.predict(X)
+
+        reverse_map = {0: "Peligro", 1: "Medio", 2: "Perfecto"}
+        df_clasificacion["Categoría"] = [reverse_map[i] for i in y_pred]
+
+        # Visualización con plotly express
+        fig = px.scatter(
+            df_clasificacion,
+            x="Agua Transportada",
+            y="Consumo de Agua",
+            color="Categoría",
+            symbol="Categoría",
+            labels={
+                "Agua Transportada": "Agua Transportada (litros)",
+                "Consumo de Agua": "Consumo de Agua (litros)"
+            }
+        )
+
+        st.plotly_chart(fig)
+
+    st.markdown("""
+        ### Análisis con Modelo de Clasificación
+
+        En esta sección utilizamos un modelo de clasificación basado en el algoritmo **K-Nearest Neighbors (KNN)**, que clasifica las observaciones en categorías según sus características.
+
+        - El modelo toma como entrada dos variables: **agua transportada** y **consumo de agua**.
+        - Clasificamos cada punto en tres categorías:
+        - **Perfecto**: cuando el agua transportada es significativamente mayor al consumo, indicando un suministro adecuado o exceso.
+        - **Medio**: cuando el agua transportada es similar al consumo, mostrando un balance adecuado pero con poca holgura.
+        - **Peligro**: cuando el agua transportada es menor o igual al consumo, lo que puede reflejar un riesgo de insuficiencia o desabasto.
+
+        El algoritmo KNN asigna la categoría a cada punto basándose en la similitud con sus vecinos más cercanos, lo que permite identificar zonas con diferentes niveles de suministro y consumo, facilitando la toma de decisiones para mejorar la distribución del agua.
+        """)
+
 with tabs[4]:
     mostrarSubtitulo(alcaldia_seleccionada, colonia_seleccionada)
-    
-    layers = []
-    
-    # Filtrar datos de consumo para el mapa
-    df_map_consumo = app_instance.data.copy()
-    if not df_map_consumo.empty:
-        if alcaldia_seleccionada != "-- Todas las alcaldías --":
-            df_map_consumo = df_map_consumo[df_map_consumo["alcaldia"] == alcaldia_seleccionada]
-        if colonia_seleccionada != "-- Todas las colonias --":
-            df_map_consumo = df_map_consumo[df_map_consumo["colonia"] == colonia_seleccionada]
-        
-        if not df_map_consumo.empty:
-            consumo_layer = pdk.Layer(
-                "ScatterplotLayer",
-                data=df_map_consumo,
-                get_position=['longitud', 'latitud'],
-                get_fill_color=[0, 120, 255, 140], # Azul para consumo
-                get_radius=100, # Radios para diferenciar
-                radius_min_pixels=3,
-                radius_max_pixels=30,
-                pickable=True,
-                auto_highlight=True,
-                tooltip={
-                    "html": "<b>Colonia:</b> {colonia}<br/><b>Alcaldía:</b> {alcaldia}<br/><b>Consumo Total:</b> {consumo_total} L<br/><b>Índice Des.:</b> {indice_des}",
-                    "style": {"color": "white", "backgroundColor": "rgba(0,0,0,0.7)", "border": "1px solid white", "padding": "5px"}
-                }
-            )
-            layers.append(consumo_layer)
 
-    # Filtrar datos de reportes 2024 para el mapa
-    df_map_reportes_2024 = app_instance.reportes_2024_data.copy()
-    if not df_map_reportes_2024.empty:
-        if alcaldia_seleccionada != "-- Todas las alcaldías --":
-            df_map_reportes_2024 = df_map_reportes_2024[df_map_reportes_2024["alcaldia"] == alcaldia_seleccionada]
-        if colonia_seleccionada != "-- Todas las colonias --":
-             df_map_reportes_2024 = df_map_reportes_2024[df_map_reportes_2024["colonia"] == colonia_seleccionada]
+    opciones_mapa = st.multiselect(
+        "Selecciona qué mostrar en el mapa:",
+        ['Consumo de Agua', 'Número de Reportes'],
+        default=['Consumo de Agua']
+    )
 
-        if not df_map_reportes_2024.empty:
-            reportes_2024_layer = pdk.Layer(
-                "ScatterplotLayer",
-                data=df_map_reportes_2024,
-                get_position=['longitud', 'latitud'],
-                get_fill_color=[255, 0, 0, 180], # Rojo para reportes 2024
-                get_radius=70,
-                radius_min_pixels=2,
-                radius_max_pixels=20,
-                pickable=True,
-                auto_highlight=True,
-                tooltip={
-                    "html": "<b>Reporte (2024)</b><br/><b>Folio:</b> {folio_incidente}<br/><b>Clasificación:</b> {clasificacion}<br/><b>Colonia:</b> {colonia}<br/><b>Alcaldía:</b> {alcaldia}",
-                    "style": {"color": "white", "backgroundColor": "rgba(0,0,0,0.7)", "border": "1px solid white", "padding": "5px"}
-                }
-            )
-            layers.append(reportes_2024_layer)
-            
-    # Filtrar datos de reportes históricos para el mapa
-    df_map_reportes_hist = app_instance.reportes_hist_data.copy()
-    if not df_map_reportes_hist.empty:
-        if alcaldia_seleccionada != "-- Todas las alcaldías --":
-            df_map_reportes_hist = df_map_reportes_hist[df_map_reportes_hist["alcaldia"] == alcaldia_seleccionada]
-        if colonia_seleccionada != "-- Todas las colonias --":
-            df_map_reportes_hist = df_map_reportes_hist[df_map_reportes_hist["colonia"] == colonia_seleccionada]
+    df_consumo_filtrado = app.data.copy()
+    df_reportes_filtrado = reportes_group.copy()
 
-        if not df_map_reportes_hist.empty:
-            reportes_hist_layer = pdk.Layer(
-                "ScatterplotLayer",
-                data=df_map_reportes_hist,
-                get_position=['longitud', 'latitud'],
-                get_fill_color=[255, 165, 0, 180], # Naranja para reportes históricos
-                get_radius=70,
-                radius_min_pixels=2,
-                radius_max_pixels=20,
-                pickable=True,
-                auto_highlight=True,
-                tooltip={
-                    "html": "<b>Reporte Histórico</b><br/><b>Folio:</b> {folio}<br/><b>Tipo Falla:</b> {tipo_de_falla}<br/><b>Colonia:</b> {colonia}<br/><b>Alcaldía:</b> {alcaldia}",
-                    "style": {"color": "white", "backgroundColor": "rgba(0,0,0,0.7)", "border": "1px solid white", "padding": "5px"}
-                }
-            )
-            layers.append(reportes_hist_layer)
-
-    if layers:
-        # Determinar la vista inicial del mapa
-        # Si hay datos filtrados, centrar en ellos, sino en CDMX
-        lat_center, lon_center, map_zoom = 19.4326, -99.1332, 10 # CDMX default
-
-        temp_df_for_view = pd.DataFrame()
-        if not df_map_consumo.empty : temp_df_for_view = pd.concat([temp_df_for_view, df_map_consumo[['latitud', 'longitud']]])
-        if not df_map_reportes_2024.empty : temp_df_for_view = pd.concat([temp_df_for_view, df_map_reportes_2024[['latitud', 'longitud']]])
-        if not df_map_reportes_hist.empty : temp_df_for_view = pd.concat([temp_df_for_view, df_map_reportes_hist[['latitud', 'longitud']]])
-        
-        if not temp_df_for_view.empty:
-            lat_center = temp_df_for_view['latitud'].astype(float).mean()
-            lon_center = temp_df_for_view['longitud'].astype(float).mean()
-            if alcaldia_seleccionada != "-- Todas las alcaldías --": map_zoom = 12
-            if colonia_seleccionada != "-- Todas las colonias --": map_zoom = 14
-            
-        view_state = pdk.ViewState(
-            latitude=lat_center,
-            longitude=lon_center,
-            zoom=map_zoom,
-            pitch=45, # Angulo para mejor visualización 3D
+    if alcaldia_seleccionada != "-- Todas las alcaldías --":
+        df_consumo_filtrado = df_consumo_filtrado[df_consumo_filtrado['alcaldia'] == alcaldia_seleccionada]
+        df_reportes_filtrado = df_reportes_filtrado.merge(
+            df_reportes[df_reportes['alcaldia'] == alcaldia_seleccionada][['latitud','longitud']],
+            on=['latitud','longitud'], how='inner'
         )
-        
-        st.pydeck_chart(pdk.Deck(
-            map_style='mapbox://styles/mapbox/light-v10', # Estilo de mapa
-            initial_view_state=view_state,
-            layers=layers,
-            api_keys={'mapbox': 'YOUR_MAPBOX_API_KEY'} # Reemplaza con tu API Key de Mapbox si usas estilos que la requieran
-        ))
-        st.markdown("""
-            Leyenda del Mapa:
-            - **Puntos Azules**: Consumo de agua (mayor radio).
-            - **Puntos Rojos**: Reportes de agua recientes (2024).
-            - **Puntos Naranjas**: Reportes de agua históricos.
-            
-            Pasa el cursor sobre los puntos para más detalles.
-            """)
-    else:
-        st.warning("No hay datos disponibles para mostrar en el mapa con los filtros seleccionados.")
+    if colonia_seleccionada != "-- Todas las colonias --":
+        df_consumo_filtrado = df_consumo_filtrado[df_consumo_filtrado['colonia'] == colonia_seleccionada]
+        df_reportes_filtrado = df_reportes_filtrado.merge(
+            df_reportes[df_reportes['colonia'] == colonia_seleccionada][['latitud','longitud']],
+            on=['latitud','longitud'], how='inner'
+        )
 
-    st.markdown("### Mapa Interactivo de Consumo y Reportes de Agua... (Tu texto explicativo)")
+    if df_consumo_filtrado.empty and df_reportes_filtrado.empty:
+        st.warning("No hay datos disponibles para la selección.")
+    else:
+        m = folium.Map(location=[19.4326, -99.1332], zoom_start=10)
+
+        if 'Consumo de Agua' in opciones_mapa and not df_consumo_filtrado.empty:
+            heat_data = [
+                [row['latitud'], row['longitud'], row['consumo_total']]
+                for idx, row in df_consumo_filtrado.iterrows()
+                if not pd.isnull(row['latitud']) and not pd.isnull(row['longitud'])
+            ]
+            HeatMap(heat_data, radius=15, max_zoom=13).add_to(m)
+
+        if 'Número de Reportes' in opciones_mapa and not df_reportes_filtrado.empty:
+            for idx, row in df_reportes_filtrado.iterrows():
+                lat = row['latitud']
+                lon = row['longitud']
+                num = row['num_reportes']
+
+                if pd.isnull(lat) or pd.isnull(lon):
+                    continue
+
+                radius = 5 + min(num, 30)
+
+                folium.CircleMarker(
+                    location=[lat, lon],
+                    radius=radius,
+                    color='red',
+                    fill=True,
+                    fill_color='red',
+                    fill_opacity=0.6,
+                    popup=f"Reportes: {num}",
+                    tooltip=f"Reportes: {num}"
+                ).add_to(m)
+
+        st_folium(m, width=700, height=500)
+
+        st.markdown("""
+            ### Mapa Interactivo: Consumo y Reportes de Agua en CDMX
+
+            - El mapa de calor muestra el consumo total de agua en las distintas áreas.
+            - Las burbujas rojas indican la cantidad de reportes en esa ubicación, con tamaño proporcional a la cantidad.
+            - Usa el selector para visualizar uno o ambos indicadores y explorar las zonas críticas.
+        """)
