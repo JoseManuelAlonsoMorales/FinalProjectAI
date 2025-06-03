@@ -30,7 +30,7 @@ st.set_page_config(
     }
 )
 
-# Cargamos los datos desde un archivo CSV
+# Cargamos los datos desde el CSV
 class Application:
     def __init__(self, path):
         self.__df = pd.read_csv(path)
@@ -87,10 +87,10 @@ class Application:
         return self.data['consumo_total'].tolist()
     
     def limpiarDataFrame(self):
-        # Limpiamos valores nulos y cadenas vacías en alcaldía y colonia
+        # Limpiamos valores nulos y strings vacíos en alcaldía y colonia
         self.data = self.__df.dropna(subset=['alcaldia', 'colonia'])
 
-        # Convertimos alcaldía y colonia a tipo string y eliminamos los espacios en blanco
+        # Convertimos alcaldía y colonia a  string y eliminamos espacios en blanco
         self.data['alcaldia'] = self.data['alcaldia'].astype(str).str.strip()
         self.data['colonia'] = self.data['colonia'].astype(str).str.strip()
 
@@ -145,7 +145,7 @@ def filtroAlcaldiaColonia(app):
     return alcaldia_seleccionada, colonia_seleccionada
 
 def mostrarSubtitulo(alcaldia_seleccionada, colonia_seleccionada):
-    # Subheader de los filtros aplicados
+
     if alcaldia_seleccionada != "-- Todas las alcaldías --":
         if colonia_seleccionada == "-- Todas las colonias --":
             st.subheader(f"Datos en {alcaldia_seleccionada}")
@@ -156,11 +156,11 @@ def mostrarSubtitulo(alcaldia_seleccionada, colonia_seleccionada):
 app = Application(r'https://raw.githubusercontent.com/JoseManuelAlonsoMorales/FinalProjectAI/main/data/consumo_agua_historico_2019.csv')  # URL del archivo CSV
 df = app.getDataFrame()
 
-# Cargamos reportes de agua 2024 y reportes históricos
+# Cargamos reportes de agua 2024 y reportes históricos pero localmente esta vez
 df_reportes_2024 = pd.read_csv('data/reportes_agua_2024_01.csv')
 df_reportes_hist = pd.read_csv('data/reportes_agua_hist.csv')
 
-# Normaliza columnas para facilitar merge
+# nombrando las columnas de forma mas facil eintuitiva para programar mas facil
 df_reportes_2024 = df_reportes_2024.rename(columns={'alcaldia_catalogo':'alcaldia','colonia_catalogo':'colonia'})
 df_reportes_hist = df_reportes_hist.rename(columns={'alcaldia':'alcaldia','colonia_datos_abiertos':'colonia'})
 
@@ -174,17 +174,17 @@ reportes_group = df_reportes.groupby(['latitud','longitud']).size().reset_index(
 st.title('Análisis del Consumo de Agua en CDMX')
 
 # Comenzamos a trabajar con los datos
-app.limpiarDataFrame()  # Limpiamos el DataFrame de valores nulos y cadenas vacías
+app.limpiarDataFrame()  # Limpiamos el DataFrame con el método que creamos 
 
 cant_consumida_max_min = np.array(app.getListaConsumoTotal()) # Convertimos la lista de consumo total a un array de numpy para obtener los valores máximos y mínimos
 diccionario_alcaldias_colonias = app.getDiccionarioAlcaldiasColonias() # Obtenemos el diccionario de alcaldías y colonias con los datos de transporte y consumo
 
- # Opciones de análisis
+ # Opciones de lo que se puede ver en la página
 tabs = st.tabs(["Introducción", "Datos", "Análisis de Regresión", "Clasificación y Segmentación", "Mapa de Consumo", "Predicción de Riesgo"])
 
 alcaldia_seleccionada, colonia_seleccionada = filtroAlcaldiaColonia(app)
 
-# Entrenamiento general del modelo de clasificación (con todos los datos del diccionario)
+# Entrenamiento general del modelo de clasificación: con todos los datos
 ArrayDatos = []
 DatosY = []
 
@@ -238,7 +238,7 @@ with tabs[0]:
 with tabs[1]:
     mostrarSubtitulo(alcaldia_seleccionada, colonia_seleccionada)
 
-    # Aplicar filtros según selección
+    # Aplicar filtros según lo que seleccione el usuario
     df_filtrado = app.data
 
     if alcaldia_seleccionada != "-- Todas las alcaldías --":
@@ -279,7 +279,7 @@ with tabs[1]:
 with tabs[2]:
     mostrarSubtitulo(alcaldia_seleccionada, colonia_seleccionada)
 
-    # Selección interactiva de alcaldía y colonia para regresión
+    # Selección personalizable de alcaldía y colonia para regresión
     alcaldias_reg = sorted(diccionario_alcaldias_colonias.keys())
     alcaldia_input = st.selectbox("Selecciona la alcaldía para análisis de regresión:", alcaldias_reg)
 
@@ -297,7 +297,7 @@ with tabs[2]:
         modelo.fit(X, Y)
         y_pred = modelo.predict(X)
 
-        # Visualización con matplotlib
+        #  matplotlib para mostrar:
         import matplotlib.pyplot as plt
         fig, ax = plt.subplots()
         ax.scatter(X, Y, color='blue', label='Datos reales')
@@ -331,7 +331,7 @@ with tabs[2]:
 with tabs[3]:
     mostrarSubtitulo(alcaldia_seleccionada, colonia_seleccionada)
     
-    # Construcción de datos de entrada
+    # datos de entrada
     registros = []
 
     for alcaldia, colonias_dict in diccionario_alcaldias_colonias.items():
@@ -362,20 +362,20 @@ with tabs[3]:
                     "Categoría": categoria
                 })
 
-    # Verificación
+    # Verificación de que si estén:
     if not registros:
         st.warning("No hay datos disponibles para la selección.")
     else:
         df_clasificacion = pd.DataFrame(registros)
 
-        # Clasificación usando el modelo previamente entrenado
+        # Clasificación usando el modelo que ya entrenamos
         X = df_clasificacion[["Agua Transportada", "Consumo de Agua"]].values
         y_pred = modelo_general_knn.predict(X)
 
         reverse_map = {0: "Peligro", 1: "Medio", 2: "Perfecto"}
         df_clasificacion["Categoría"] = [reverse_map[i] for i in y_pred]
 
-        # Visualización con plotly express
+        # plotly para mostrar
         fig = px.scatter(
             df_clasificacion,
             x="Agua Transportada",
