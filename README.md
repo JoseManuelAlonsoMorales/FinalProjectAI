@@ -21,6 +21,6 @@ A través de visualizaciones interactivas, permite identificar zonas con problem
 
 - Python 3.12
 - Streamlit para la interfaz web.
-- Pydeck para visualización geoespacial interactiva.
+- Folium para visualización geoespacial interactiva.
 - Pandas y NumPy para manejo y análisis de datos.
-- Scikit-learn para análisis complementarios (si aplica).
+- Scikit-learn para análisis complementarios.
